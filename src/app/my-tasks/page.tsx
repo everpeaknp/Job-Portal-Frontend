@@ -414,8 +414,12 @@ export default function MyTasksPage() {
             {/* Friendly empty state when NO filtered task has coords.
                 Hide it when a task is selected so it doesn't look like a task-level error. */}
             {!isLoading && !selectedTask && filteredTasks.length > 0 && transformedTasks.length === 0 && (
-              <div className="absolute inset-0 z-[300] flex items-center justify-center pointer-events-none">
-                <div className="bg-white/95 backdrop-blur border border-outline-variant rounded-2xl shadow-lg px-6 py-5 max-w-sm text-center pointer-events-auto">
+              <div
+                className={`absolute inset-0 z-[25] flex items-center justify-center p-6 pb-32 pointer-events-none lg:pb-6 ${
+                  sheetSnap === 'list' ? 'hidden lg:flex' : 'flex'
+                }`}
+              >
+                <div className="pointer-events-auto max-w-sm rounded-2xl border border-outline-variant bg-white/95 px-6 py-5 text-center shadow-lg backdrop-blur">
                   <h3 className="text-base font-bold text-on-surface mb-1">
                     Map pins unavailable
                   </h3>

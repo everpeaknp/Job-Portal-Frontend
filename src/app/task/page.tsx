@@ -571,27 +571,32 @@ export default function App() {
               )}
             </TaskBrowseMobileSheet>
 
-            {/* Friendly overlay when no tasks have coordinates at all.
-                Hide while a detail panel is open so it doesn't feel like a task error. */}
-            {!isLoading && mappedTasks.length === 0 && !detailTask && (
-              <div className="absolute inset-0 z-[400] flex items-center justify-center p-6 pointer-events-none">
-                <div className="bg-white rounded-2xl shadow-xl border border-outline-variant max-w-sm text-center p-6 pointer-events-auto">
-                  <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-surface-dim flex items-center justify-center">
-                    <MapPin className="w-6 h-6 text-on-surface-variant" />
+            {/* Map-only hint when tasks exist but lack coordinates. Never show when the
+                filter list is empty (sheet handles that) or on mobile list view (z-fight). */}
+            {!isLoading &&
+              !detailTask &&
+              filteredTaskList.length > 0 &&
+              mappedTasks.length === 0 && (
+                <div
+                  className={`absolute inset-0 z-[25] flex items-center justify-center p-6 pb-32 pointer-events-none lg:pb-6 ${
+                    sheetSnap === 'list' ? 'hidden lg:flex' : 'flex'
+                  }`}
+                >
+                  <div className="pointer-events-auto max-w-sm rounded-2xl border border-outline-variant bg-white p-6 text-center shadow-xl">
+                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-surface-dim">
+                      <MapPin className="h-6 w-6 text-on-surface-variant" />
+                    </div>
+                    <h3 className="mb-1 text-base font-bold text-on-surface">
+                      Map pins unavailable
+                    </h3>
+                    <p className="text-sm text-on-surface-variant">
+                      These tasks don&apos;t have saved map coordinates yet. Open a task
+                      and use <span className="font-semibold">View map</span> to search by
+                      address, or browse the list below.
+                    </p>
                   </div>
-                  <h3 className="text-base font-bold text-on-surface mb-1">
-                    Map pins unavailable
-                  </h3>
-                  <p className="text-sm text-on-surface-variant">
-                    {filteredTaskList.length === 0
-                      ? taskList.length === 0
-                        ? 'No tasks have been posted yet.'
-                        : 'No tasks match your current filters.'
-                      : 'These tasks don’t have saved coordinates (latitude/longitude) yet. Open a task and use “View map” to search by address.'}
-                  </p>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* Full details — sidebar card or "View Task" on map preview */}
             <AnimatePresence mode="wait">
