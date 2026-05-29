@@ -1,8 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Search, ChevronDown } from 'lucide-react';
 import { landingHeadline, landingHeadlineSm } from '@/components/LangingHome/landingTypography';
+
+const pillButtonClass =
+  'inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-2.5 text-center text-xs font-semibold leading-snug text-white transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/20 active:scale-[0.98] sm:min-h-9 sm:w-auto sm:justify-start sm:px-4 sm:py-2 sm:text-left sm:text-sm md:px-4 md:py-2.5';
 
 interface HeroProps {
   onPostWithTitle: (title: string) => void;
@@ -11,6 +14,31 @@ interface HeroProps {
 export default function Hero({ onPostWithTitle }: HeroProps) {
   const [inputValue, setInputValue] = useState('');
   const [showInspirationMenu, setShowInspirationMenu] = useState(false);
+  const inspirationRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showInspirationMenu) return;
+
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node;
+      if (inspirationRef.current && !inspirationRef.current.contains(target)) {
+        setShowInspirationMenu(false);
+      }
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowInspirationMenu(false);
+    };
+
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('touchstart', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('touchstart', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [showInspirationMenu]);
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,12 +66,16 @@ export default function Hero({ onPostWithTitle }: HeroProps) {
   ];
 
   return (
-    <div className="w-full">
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#005fff] via-[#0047ff] to-[#03113c] py-10 text-left text-white shadow-md transition-all duration-300 sm:py-16 md:py-24">
-        {/* Decorative background visual ambient circles and polygons */}
-        <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-sky-400 via-indigo-500 to-transparent opacity-20" />
-        <div className="pointer-events-none absolute top-1/4 right-0 hidden h-48 w-48 rounded-full bg-cyan-400 opacity-10 mix-blend-screen blur-3xl filter animate-pulse sm:block sm:h-64 sm:w-64" />
-        <div className="pointer-events-none absolute -bottom-10 -left-10 h-48 w-48 rounded-full bg-blue-500 opacity-15 mix-blend-screen blur-3xl filter sm:h-72 sm:w-72" />
+    <div className={`w-full ${showInspirationMenu ? 'relative z-30' : ''}`}>
+      <section
+        className="relative bg-gradient-to-br from-[#005fff] via-[#0047ff] to-[#03113c] py-10 text-left text-white shadow-md transition-all duration-300 sm:py-16 md:py-24"
+      >
+        {/* Decorative layer — overflow hidden only here so dropdown is not clipped */}
+        <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-sky-400 via-indigo-500 to-transparent opacity-20" />
+          <div className="absolute top-1/4 right-0 hidden h-48 w-48 rounded-full bg-cyan-400 opacity-10 mix-blend-screen blur-3xl filter animate-pulse sm:block sm:h-64 sm:w-64" />
+          <div className="absolute -bottom-10 -left-10 h-48 w-48 rounded-full bg-blue-500 opacity-15 mix-blend-screen blur-3xl filter sm:h-72 sm:w-72" />
+        </div>
 
         {/* Main Wrapper content */}
         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -87,59 +119,75 @@ export default function Hero({ onPostWithTitle }: HeroProps) {
           </form>
 
           {/* Quick assistance suggestion triggers */}
-          <div className="mt-5 flex flex-wrap items-center gap-2 sm:mt-6 sm:gap-2.5">
-            {quickPills.map((pill) => (
-              <button
-                key={pill.title}
-                type="button"
-                onClick={() => onPostWithTitle(pill.query)}
-                className="flex min-h-9 max-w-full cursor-pointer items-center space-x-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-left text-xs font-semibold text-white transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/20 active:scale-95 sm:px-3.5 sm:py-1.5"
-              >
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-cyan-300" />
-                <span>{pill.title}</span>
-              </button>
-            ))}
-
-            {/* More inspiration popover activator */}
-            <div
-              className={`relative w-full sm:w-auto ${showInspirationMenu ? 'z-50' : ''}`}
-            >
-              <button
-                type="button"
-                onClick={() => setShowInspirationMenu(!showInspirationMenu)}
-                aria-expanded={showInspirationMenu}
-                className="flex min-h-9 w-full cursor-pointer items-center justify-center space-x-1 rounded-full border border-white/20 bg-white/10 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/20 active:scale-95 sm:w-auto sm:py-1.5"
-              >
-                <span>More inspiration</span>
-                <ChevronDown
-                  className={`h-3 w-3 transition-transform ${showInspirationMenu ? 'rotate-180' : ''}`}
-                />
-              </button>
-
-              {showInspirationMenu && (
-                <div className="absolute left-0 top-full z-50 mt-2 w-[min(100vw-2rem,16rem)] rounded-xl border border-white/10 bg-[#03113c] p-2 text-left shadow-2xl animate-in fade-in slide-in-from-top-2 duration-150 sm:w-64">
+          <div className="mt-5 max-w-5xl sm:mt-6 lg:mt-8">
+            <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2 md:flex md:flex-wrap md:items-stretch md:gap-2.5 lg:gap-3">
+              {quickPills.map((pill) => (
+                <button
+                  key={pill.title}
+                  type="button"
+                  onClick={() => onPostWithTitle(pill.query)}
+                  className={pillButtonClass}
+                >
                   <span
-                    className={`${landingHeadlineSm} text-[10px] text-blue-400 tracking-wider block p-2 uppercase`}
+                    className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-300"
+                    aria-hidden
+                  />
+                  <span className="min-w-0 text-balance">{pill.title}</span>
+                </button>
+              ))}
+
+              {/* More inspiration — full-width row on narrow mobile; inline from md */}
+              <div
+                ref={inspirationRef}
+                className="relative col-span-1 min-[380px]:col-span-2 md:col-span-1 md:w-auto lg:shrink-0"
+              >
+                <button
+                  type="button"
+                  onClick={() => setShowInspirationMenu((open) => !open)}
+                  aria-expanded={showInspirationMenu}
+                  aria-controls="hero-inspiration-panel"
+                  className={`${pillButtonClass} w-full md:min-w-[10.5rem]`}
+                >
+                  <span className="min-w-0">More inspiration</span>
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${
+                      showInspirationMenu ? 'rotate-180' : ''
+                    }`}
+                    aria-hidden
+                  />
+                </button>
+
+                {showInspirationMenu && (
+                  <div
+                    id="hero-inspiration-panel"
+                    role="region"
+                    aria-label="Popular task ideas"
+                    className="relative z-50 mt-2 w-full rounded-xl border border-white/20 bg-[#03113c] p-2 text-left shadow-2xl animate-in fade-in slide-in-from-top-2 duration-150 md:absolute md:left-0 md:top-[calc(100%+0.5rem)] md:mt-0 md:w-72 md:max-w-[min(100vw-2rem,20rem)] lg:left-auto lg:right-0"
                   >
-                    Popular Ideas:
-                  </span>
-                  <div className="space-y-0.5 max-h-48 overflow-y-auto">
-                    {inspirationPills.map((idea) => (
-                      <button
-                        key={idea}
-                        type="button"
-                        onClick={() => {
-                          setShowInspirationMenu(false);
-                          onPostWithTitle(idea);
-                        }}
-                        className="w-full text-left rounded-lg p-2 text-xs font-medium text-gray-200 hover:bg-white/10 hover:text-white transition cursor-pointer"
-                      >
-                        {idea}
-                      </button>
-                    ))}
+                    <span
+                      className={`${landingHeadlineSm} block px-2 pb-1 pt-1 text-[10px] uppercase tracking-wider text-blue-400`}
+                    >
+                      Popular Ideas:
+                    </span>
+                    <ul className="max-h-[min(16rem,50dvh)] space-y-0.5 overflow-y-auto overscroll-contain md:max-h-56">
+                      {inspirationPills.map((idea) => (
+                        <li key={idea}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowInspirationMenu(false);
+                              onPostWithTitle(idea);
+                            }}
+                            className="w-full cursor-pointer rounded-lg px-3 py-2.5 text-left text-xs font-medium text-gray-200 transition hover:bg-white/10 hover:text-white sm:text-sm"
+                          >
+                            {idea}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
 
