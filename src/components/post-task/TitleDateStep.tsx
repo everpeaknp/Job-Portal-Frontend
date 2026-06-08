@@ -5,6 +5,16 @@ import { Calendar } from '@/components/ui/calendar';
 
 import type { Category } from '@/types';
 import { CategorySelect } from '@/components/post-task/CategorySelect';
+import {
+  postTaskLabel,
+  postTaskInputMd,
+  postTaskInputError,
+  postTaskErrorText,
+  postTaskErrorTextSm,
+  postTaskChipActive,
+  postTaskChipInactive,
+} from '@/components/post-task/postTaskStyles';
+import { landingHeadline } from '@/components/LangingHome/landingTypography';
 
 export interface TaskData {
   title: string;
@@ -55,24 +65,21 @@ export const TitleDateStep: React.FC<TitleDateStepProps> = ({
   const timeSlotError = errors?.timeSlot && showErrors ? errors.timeSlot : null;
 
   const handleDateSelect = (date: Date, type: 'specific' | 'before') => {
-    // Format date as YYYY-MM-DD in local timezone to avoid timezone offset issues
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     const dateString = `${year}-${month}-${day}`;
-    
+
     if (type === 'specific') {
       updateData({ specificDate: dateString, dateType: 'specific' });
     } else {
       updateData({ beforeDate: dateString, dateType: 'before' });
     }
-    
-    // Close calendar after selection
+
     setTimeout(() => setShowCalendar(null), 300);
   };
 
   const handleDateTypeClick = (type: 'specific' | 'before') => {
-    // Toggle calendar visibility for the clicked type
     setShowCalendar(showCalendar === type ? null : type);
   };
 
@@ -81,152 +88,141 @@ export const TitleDateStep: React.FC<TitleDateStepProps> = ({
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
-    // Parse the date string as local date to avoid timezone issues
     const [year, month, day] = dateString.split('-').map(Number);
     const date = new Date(year, month - 1, day);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
       day: 'numeric',
-      year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+      year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined,
     });
   };
+
+  const chipClass = (active: boolean) =>
+    `flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 font-body text-xs font-semibold transition-all sm:text-[13px] ${
+      active ? postTaskChipActive : postTaskChipInactive
+    }`;
+
   return (
     <div className="w-full">
-      <h1
-        className="mb-6 text-2xl font-bold uppercase tracking-tight text-gray-900 sm:mb-8 sm:text-3xl md:text-[2rem] lg:mb-10 lg:text-4xl"
-        style={{ fontFamily: '"Space Grotesk", sans-serif' }}
-      >
+      <h1 className={`${landingHeadline} mb-1 text-xl text-[#000d45] leading-tight sm:text-2xl`}>
         Let's start with the basics
       </h1>
+      <p className="mb-4 font-body text-xs text-[#6a719a] sm:mb-5 sm:text-sm">
+        Tell us what you need and when you'd like it done.
+      </p>
 
-      <div className="space-y-6 sm:space-y-8 lg:space-y-10">
-        <CategorySelect
-          categories={categories}
-          categoriesLoaded={categoriesLoaded}
-          value={data.categoryId}
-          onChange={(categoryId, categoryName) =>
-            updateData({ categoryId, categoryName })
-          }
-          showError={showErrors}
-          error={categoryError ?? undefined}
-        />
-
-        <div>
-          <label className="block text-[15px] font-bold text-gray-800 mb-4">In a few words, what do you need done?</label>
-          <input
-            type="text"
-            className={`w-full rounded-2xl bg-gray-50 p-4 text-base placeholder:text-gray-400 shadow-sm outline-none transition-all sm:p-5 sm:text-lg ${
-              titleError ? 'ring-2 ring-[#ff4d00]' : 'focus:ring-2 focus:ring-[#0066ff]'
-            }`}
-            placeholder="e.g. Help move my sofa"
-            value={data.title}
-            onChange={(e) => updateData({ title: e.target.value })}
-            onBlur={() => setIsTitleTouched(true)}
+      <div className="space-y-4 sm:space-y-5">
+        <div className="w-full max-w-md space-y-4 sm:max-w-lg sm:space-y-5">
+          <CategorySelect
+            categories={categories}
+            categoriesLoaded={categoriesLoaded}
+            value={data.categoryId}
+            onChange={(categoryId, categoryName) =>
+              updateData({ categoryId, categoryName })
+            }
+            showError={showErrors}
+            error={categoryError ?? undefined}
           />
-          {titleError && (
-            <p className="mt-2 text-[13px] font-bold text-[#ff4d00]">{titleError}</p>
-          )}
+
+          <div className="w-full">
+            <label className={`${postTaskLabel} mb-2 block`}>
+              In a few words, what do you need done?
+            </label>
+            <input
+              type="text"
+              className={`${postTaskInputMd} w-full ${titleError ? postTaskInputError : ''}`}
+              placeholder="e.g. Help move my sofa"
+              value={data.title}
+              onChange={(e) => updateData({ title: e.target.value })}
+              onBlur={() => setIsTitleTouched(true)}
+            />
+            {titleError && <p className={postTaskErrorText}>{titleError}</p>}
+          </div>
         </div>
 
-        {/* Date Selection */}
         <div>
-          <label className="block text-[15px] font-bold text-gray-800 mb-4">When do you need this done?</label>
-          <div className="flex flex-wrap gap-3 mb-4">
-            {/* Specific Date Button */}
+          <label className={`${postTaskLabel} mb-1.5 block`}>When do you need this done?</label>
+          <div className="mb-2 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => handleDateTypeClick('specific')}
-              className={`flex cursor-pointer items-center gap-2 rounded-full border-2 px-4 py-2.5 transition-all sm:px-5 sm:py-3 ${
-                hasSpecificDate
-                  ? 'bg-blue-950 border-blue-950 text-white shadow-lg shadow-blue-950/20'
-                  : 'bg-white border-gray-200 text-blue-950 hover:bg-blue-950 hover:border-blue-950 hover:text-white hover:shadow-lg hover:shadow-blue-950/20'
-              }`}
+              className={chipClass(hasSpecificDate)}
             >
-              <CalendarIcon className="w-4 h-4" />
-              <span className="text-[15px] font-bold">
-                {hasSpecificDate
-                  ? `On ${formatDate(data.specificDate)}` 
-                  : 'On date'
-                }
+              <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
+              <span>
+                {hasSpecificDate ? `On ${formatDate(data.specificDate)}` : 'On date'}
               </span>
-              <ChevronDown className={`w-4 h-4 transition-transform ${showCalendar === 'specific' ? 'rotate-180' : ''}`} />
+              <ChevronDown
+                className={`h-3.5 w-3.5 shrink-0 transition-transform ${showCalendar === 'specific' ? 'rotate-180' : ''}`}
+              />
             </button>
 
-            {/* Before Date Button */}
             <button
               type="button"
               onClick={() => handleDateTypeClick('before')}
-              className={`flex cursor-pointer items-center gap-2 rounded-full border-2 px-4 py-2.5 transition-all sm:px-7 sm:py-3 ${
-                hasBeforeDate
-                  ? 'bg-blue-950 border-blue-950 text-white shadow-lg shadow-blue-950/20'
-                  : 'bg-white border-gray-200 text-blue-950 hover:bg-blue-950 hover:border-blue-950 hover:text-white hover:shadow-lg hover:shadow-blue-950/20'
-              }`}
+              className={chipClass(hasBeforeDate)}
             >
-              <CalendarIcon className="w-4 h-4" />
-              <span className="text-[15px] font-bold">
-                {hasBeforeDate
-                  ? `Before ${formatDate(data.beforeDate)}` 
-                  : 'Before date'
-                }
+              <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
+              <span>
+                {hasBeforeDate ? `Before ${formatDate(data.beforeDate)}` : 'Before date'}
               </span>
-              <ChevronDown className={`w-4 h-4 transition-transform ${showCalendar === 'before' ? 'rotate-180' : ''}`} />
+              <ChevronDown
+                className={`h-3.5 w-3.5 shrink-0 transition-transform ${showCalendar === 'before' ? 'rotate-180' : ''}`}
+              />
             </button>
 
-            {/* Flexible Option */}
             <button
+              type="button"
               onClick={() => {
                 updateData({ dateType: 'flexible' });
                 setShowCalendar(null);
               }}
-              className={`rounded-full border-2 px-4 py-2.5 transition-all sm:px-7 sm:py-3 ${
-                data.dateType === 'flexible'
-                  ? 'bg-blue-950 border-blue-950 text-white shadow-lg shadow-blue-950/20'
-                  : 'bg-white border-gray-200 text-blue-950 hover:bg-blue-950 hover:border-blue-950 hover:text-white hover:shadow-lg hover:shadow-blue-950/20'
-              }`}
+              className={chipClass(data.dateType === 'flexible')}
             >
-              <span className="text-[15px] font-bold">I'm flexible</span>
+              I'm flexible
             </button>
           </div>
 
-          {/* Calendar Dropdown */}
           {showCalendar && (
-            <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="mt-1.5 w-fit animate-in fade-in slide-in-from-top-2 duration-200">
               <Calendar
-                selected={showCalendar === 'specific' 
-                  ? (data.specificDate ? (() => {
-                      const [year, month, day] = data.specificDate.split('-').map(Number);
-                      return new Date(year, month - 1, day);
-                    })() : undefined)
-                  : (data.beforeDate ? (() => {
-                      const [year, month, day] = data.beforeDate.split('-').map(Number);
-                      return new Date(year, month - 1, day);
-                    })() : undefined)
+                selected={
+                  showCalendar === 'specific'
+                    ? data.specificDate
+                      ? (() => {
+                          const [year, month, day] = data.specificDate.split('-').map(Number);
+                          return new Date(year, month - 1, day);
+                        })()
+                      : undefined
+                    : data.beforeDate
+                      ? (() => {
+                          const [year, month, day] = data.beforeDate.split('-').map(Number);
+                          return new Date(year, month - 1, day);
+                        })()
+                      : undefined
                 }
                 onSelect={(date) => handleDateSelect(date, showCalendar)}
                 minDate={new Date()}
                 showMonthYearPickers={false}
-                className="mx-0"
+                className="mx-0 border border-black shadow-none"
               />
             </div>
           )}
-          {dateError && (
-            <p className="mt-2 text-[13px] font-bold text-[#ff4d00]">{dateError}</p>
-          )}
+          {dateError && <p className={postTaskErrorTextSm}>{dateError}</p>}
         </div>
 
-        {/* Time of Day - Show after a date mode is selected (including flexible) */}
         {data.dateType !== '' && (
-          <div className="space-y-6">
-            <label className="flex items-center gap-3 cursor-pointer group">
+          <div className="space-y-3">
+            <label className="group flex cursor-pointer items-center gap-2">
               <div className="relative flex items-center">
                 <input
                   type="checkbox"
-                  className="peer h-6 w-6 cursor-pointer appearance-none rounded-lg border-2 border-[#0066ff] transition-all checked:bg-[#0066ff]"
+                  className="peer h-4 w-4 cursor-pointer appearance-none rounded bg-gray-100 transition-all checked:bg-primary"
                   checked={data.timeOfDayRequired}
                   onChange={(e) => updateData({ timeOfDayRequired: e.target.checked })}
                 />
                 <svg
-                  className="absolute h-4 w-4 opacity-0 peer-checked:opacity-100 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white pointer-events-none"
+                  className="pointer-events-none absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100"
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
                   fill="none"
@@ -235,18 +231,18 @@ export const TitleDateStep: React.FC<TitleDateStepProps> = ({
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 >
-                  <polyline points="20 6 9 17 4 12"></polyline>
+                  <polyline points="20 6 9 17 4 12" />
                 </svg>
               </div>
-              <span className="text-[15px] font-bold text-gray-800">I need a certain time of day</span>
+              <span className={`${postTaskLabel} font-medium`}>I need a certain time of day</span>
             </label>
 
             {data.timeOfDayRequired && (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 sm:gap-2">
                 {[
                   { id: 'morning', icon: Sunrise, label: 'Morning', sub: 'Before 10am' },
-                  { id: 'midday', icon: Sun, label: 'Midday', sub: '10am - 2pm' },
-                  { id: 'afternoon', icon: Sunset, label: 'Afternoon', sub: '2pm - 6pm' },
+                  { id: 'midday', icon: Sun, label: 'Midday', sub: '10am – 2pm' },
+                  { id: 'afternoon', icon: Sunset, label: 'Afternoon', sub: '2pm – 6pm' },
                   { id: 'evening', icon: CloudMoon, label: 'Evening', sub: 'After 6pm' },
                 ].map((slot) => {
                   const Icon = slot.icon;
@@ -254,24 +250,25 @@ export const TitleDateStep: React.FC<TitleDateStepProps> = ({
                   return (
                     <button
                       key={slot.id}
-                      onClick={() => updateData({ timeSlot: slot.id as any })}
-                      className={`flex flex-col items-center justify-center rounded-2xl border-2 p-3 transition-all sm:p-6 ${
+                      type="button"
+                      onClick={() => updateData({ timeSlot: slot.id as TaskData['timeSlot'] })}
+                      className={`flex flex-col items-center justify-center rounded-xl px-2 py-2 transition-all sm:py-2.5 ${
                         isActive
-                          ? 'bg-blue-50 border-[#0066ff] text-[#0066ff] shadow-sm'
-                          : 'bg-gray-50 border-transparent hover:border-gray-200 text-gray-500'
+                          ? 'bg-[#eef4ff] text-primary shadow-sm'
+                          : 'bg-gray-50 text-[#6a719a] hover:bg-gray-100'
                       }`}
                     >
-                      <Icon className={`mb-2 h-6 w-6 sm:mb-3 sm:h-7 sm:w-7 ${isActive ? 'text-[#0066ff]' : 'text-gray-400'}`} />
-                      <span className="text-xs font-bold sm:text-[15px]">{slot.label}</span>
-                      <span className="text-[10px] font-medium opacity-70 sm:text-[11px]">{slot.sub}</span>
+                      <Icon
+                        className={`mb-1 h-4 w-4 sm:h-5 sm:w-5 ${isActive ? 'text-primary' : 'text-[#8a96b0]'}`}
+                      />
+                      <span className="font-body text-[11px] font-semibold sm:text-xs">{slot.label}</span>
+                      <span className="font-body text-[9px] opacity-70 sm:text-[10px]">{slot.sub}</span>
                     </button>
                   );
                 })}
               </div>
             )}
-            {timeSlotError && (
-              <p className="mt-2 text-[13px] font-bold text-[#ff4d00]">{timeSlotError}</p>
-            )}
+            {timeSlotError && <p className={postTaskErrorTextSm}>{timeSlotError}</p>}
           </div>
         )}
       </div>

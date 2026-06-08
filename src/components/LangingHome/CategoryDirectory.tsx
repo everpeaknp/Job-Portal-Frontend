@@ -6,7 +6,7 @@ import { TOP_CATEGORIES } from "../constants";
 import { taskService } from "@/services/task.service";
 import { buildCategoryColumns, postTaskHref, type CategoryColumn } from "@/lib/landingHome";
 import { extractCategoryList } from "@/lib/taskUtils";
-import { landingHeadline } from "./landingTypography";
+import { landingBody, landingHeadline } from "./landingTypography";
 
 function fallbackColumns(): CategoryColumn[] {
   return TOP_CATEGORIES.map((group) => ({
@@ -42,13 +42,13 @@ export default function CategoryDirectory() {
   }, []);
 
   return (
-    <section className="border-t border-gray-100 bg-white py-12 sm:py-16 md:py-24">
+    <section className="border-t border-gray-100 bg-white py-8 sm:py-10 md:py-12">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-8 flex flex-col gap-3 sm:mb-12 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
           <h2 className={`${landingHeadline} text-2xl sm:text-4xl`}>Top Categories</h2>
           <Link
             href="/discover"
-            className="text-sm font-semibold text-[#1161fe] hover:underline"
+            className={`${landingBody} text-sm font-semibold text-[#1161fe] hover:underline`}
           >
             Explore all services →
           </Link>
@@ -62,7 +62,7 @@ export default function CategoryDirectory() {
                   <li key={`${group.title}-${link.label}`}>
                     <Link
                       href={link.href}
-                      className="text-sm text-gray-500 hover:text-[#1161fe] transition-colors"
+                      className={`${landingBody} text-sm text-gray-500 transition-colors hover:text-[#1161fe]`}
                     >
                       {link.label}
                     </Link>

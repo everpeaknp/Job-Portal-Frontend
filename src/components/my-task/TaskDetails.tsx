@@ -17,6 +17,9 @@ import {
   Copy,
   Ban,
   Eye,
+  Handshake,
+  Heart,
+  Share2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -41,6 +44,7 @@ import {
   getTaskPosterId,
   getTaskPosterProfileSlug,
   getTaskPosterUser,
+  formatTaskDisplayTitle,
 } from '@/lib/taskUtils';
 import { confirmCancelTask, confirmDeleteTask } from '@/lib/confirmToast';
 import { getTaskTimeSlotFromRequirements } from '@/lib/timeSlot';
@@ -56,6 +60,10 @@ import {
   hasTaskerMarkedComplete,
   resolveMyTaskRoles,
 } from '@/lib/taskUtils';
+import { landingBody, landingHeadline } from '@/components/LangingHome/landingTypography';
+
+/** Premium typography: Manrope body + Outfit/Formula display (matches discover/home). */
+const TASK_DETAILS_TYPO = `${landingBody} [&_h1]:font-formula [&_h1]:font-black [&_h1]:tracking-tight [&_h2]:font-formula [&_h2]:font-extrabold [&_h2]:tracking-tight [&_h3]:font-formula [&_h3]:font-bold [&_h3]:tracking-tight [&_h4]:font-formula [&_h4]:font-semibold [&_h4]:tracking-tight`;
 
 interface TaskDetailsProps {
   task: Task;
@@ -155,6 +163,9 @@ export default function TaskDetails({
   const [walletAvailableBalance, setWalletAvailableBalance] = useState<number | null>(null);
   const [loadingWalletBalance, setLoadingWalletBalance] = useState(false);
   const [shouldPromptReview, setShouldPromptReview] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [bookmarkLoading, setBookmarkLoading] = useState(false);
+  const [shareLoading, setShareLoading] = useState(false);
 
   useEffect(() => {
     setShouldPromptReview(false);
@@ -227,6 +238,10 @@ export default function TaskDetails({
     return typeof raw === 'number' && Number.isFinite(raw) ? raw : 0;
   }, [detailTask, apiTask]);
 
+  const displayTitle = formatTaskDisplayTitle(
+    detailTask?.title || apiTask?.title || task.title || 'Untitled Task',
+  );
+
   const acceptedBid = useMemo(() => bids.find((b) => b.status === 'accepted'), [bids]);
   const hasAcceptedOffer = useMemo(
     () =>
@@ -291,6 +306,97 @@ export default function TaskDetails({
       cancelled = true;
     };
   }, [apiTask, lookup]);
+
+  useEffect(() => {
+    const src = detailTask ?? apiTask;
+    setIsBookmarked(Boolean(src?.is_bookmarked));
+  }, [detailTask, apiTask]);
+
+  const taskShareUrl = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    const slug = detailTask?.slug || apiTask?.slug || task.slug || task.id;
+    return `${window.location.origin}/task/${slug}`;
+  }, [detailTask?.slug, apiTask?.slug, task.slug, task.id]);
+
+  const handleToggleBookmark = async () => {
+    if (!user) {
+      router.push('/signin');
+      return;
+    }
+
+    const slug = lookup;
+    const nextBookmarked = !isBookmarked;
+    setBookmarkLoading(true);
+    setIsBookmarked(nextBookmarked);
+
+    try {
+      const response = nextBookmarked
+        ? await taskService.bookmarkTask(slug)
+        : await taskService.unbookmarkTask(slug);
+
+      if (response.success) {
+        toast.success(nextBookmarked ? 'Task saved to bookmarks' : 'Removed from bookmarks');
+        setDetailTask((prev) =>
+          prev
+            ? {
+                ...prev,
+                is_bookmarked: nextBookmarked,
+                bookmarks_count: Math.max(
+                  0,
+                  (prev.bookmarks_count ?? 0) + (nextBookmarked ? 1 : -1)
+                ),
+              }
+            : prev
+        );
+      } else {
+        setIsBookmarked(!nextBookmarked);
+        toast.error(response.message || 'Could not update bookmark');
+      }
+    } catch (err: unknown) {
+      setIsBookmarked(!nextBookmarked);
+      const message =
+        err && typeof err === 'object' && 'message' in err && typeof (err as { message: string }).message === 'string'
+          ? (err as { message: string }).message
+          : 'Could not update bookmark';
+      toast.error(message);
+    } finally {
+      setBookmarkLoading(false);
+    }
+  };
+
+  const handleShareTask = async () => {
+    if (!taskShareUrl) return;
+
+    setShareLoading(true);
+    const shareTitle = displayTitle || 'Task on tasknepal';
+    const shareText = `Check out this task: ${shareTitle}`;
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: taskShareUrl,
+        });
+        toast.success('Share dialog opened');
+      } else {
+        await navigator.clipboard.writeText(taskShareUrl);
+        toast.success('Task link copied to clipboard');
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(taskShareUrl);
+        toast.success('Task link copied to clipboard');
+      } catch {
+        toast.error('Could not share this task');
+      }
+    } finally {
+      setShareLoading(false);
+    }
+  };
 
   const timeSlot = useMemo(
     () =>
@@ -593,6 +699,15 @@ export default function TaskDetails({
     return getMediaUrl(nested?.profile_image || task.user.avatar);
   }, [posterSource, task.user.avatar]);
 
+  const posterVerified = useMemo(() => {
+    const nested = posterSource ? getTaskPosterUser(posterSource) : null;
+    if (nested?.is_verified_tasker) return true;
+    if (posterSource && typeof posterSource === 'object' && 'owner_is_verified' in posterSource) {
+      return Boolean(posterSource.owner_is_verified);
+    }
+    return Boolean(task.user.verified);
+  }, [posterSource, task.user.verified]);
+
   const mapLink = (() => {
     const lat = task.coordinates[0];
     const lng = task.coordinates[1];
@@ -693,8 +808,8 @@ export default function TaskDetails({
   );
 
   const rootClassName = isPageVariant
-    ? 'relative w-full flex-1 min-h-0 bg-white overflow-y-auto overflow-x-hidden flex flex-col'
-    : 'absolute inset-0 bg-white z-[50] max-w-[100vw] overflow-y-auto overflow-x-hidden flex flex-col';
+    ? `relative w-full flex-1 min-h-0 bg-white overflow-y-auto overflow-x-hidden flex flex-col ${TASK_DETAILS_TYPO}`
+    : `absolute inset-0 bg-white z-[50] max-w-[100vw] overflow-y-auto overflow-x-hidden flex flex-col ${TASK_DETAILS_TYPO}`;
 
   return (
     <motion.div
@@ -722,7 +837,7 @@ export default function TaskDetails({
                 <p className="text-[10px] md:text-[11px] font-bold text-on-surface-variant tracking-wider uppercase mb-2">
                   Task Budget
                 </p>
-                <p className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-[#000d45] mb-4 sm:mb-6 md:mb-8 break-words">
+                <p className={`${landingHeadline} mb-4 break-words text-3xl text-[#000d45] sm:mb-6 sm:text-4xl md:mb-8 md:text-5xl lg:text-6xl`}>
                   {formatNPR(task.price)}
                 </p>
 
@@ -811,6 +926,7 @@ export default function TaskDetails({
                 profileSlug={posterSlug}
                 posterName={posterDisplayName}
                 posterAvatar={posterAvatar}
+                posterVerified={posterVerified}
               />
 
               <div className="hidden lg:block">{moreOptionsSection(sidebarMoreOptionsRef)}</div>
@@ -821,8 +937,8 @@ export default function TaskDetails({
           <div className="flex-1 min-w-0 w-full space-y-5 sm:space-y-6 md:space-y-8 lg:space-y-10 order-last lg:order-first">
             <div className="pr-10 sm:pr-12">
               <TaskStatusTimeline status={currentStatus} className="mb-2 md:mb-3" />
-              <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-[#000d45] leading-tight mb-2 break-words">
-                {task.title}
+              <h1 className={`${landingHeadline} mb-2 break-words text-xl leading-tight text-[#000d45] sm:text-2xl md:text-3xl lg:text-4xl`}>
+                {displayTitle}
               </h1>
             </div>
 
@@ -912,7 +1028,7 @@ export default function TaskDetails({
               </div>
             )}
 
-            <div className="pt-4 md:pt-6 border-t border-outline-variant min-w-0 overflow-hidden">
+            <div className="pt-4 md:pt-6 border-t border-outline-variant min-w-0">
               <div className="flex bg-[#fff9db] p-1 rounded-full w-full max-w-full mb-6 md:mb-8">
                 <button
                   type="button"
@@ -949,19 +1065,10 @@ export default function TaskDetails({
                     </div>
                   ) : bids.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-8 md:py-12 text-center">
-                      <div className="w-24 h-24 md:w-32 md:h-32 mb-4 md:mb-6">
-                        <svg
-                          viewBox="0 0 100 100"
-                          className="w-full h-full text-surface-variant fill-none stroke-current"
-                          strokeWidth="2"
-                        >
-                          <circle cx="50" cy="40" r="15" />
-                          <path d="M30 70 Q50 90 70 70" />
-                          <line x1="45" y1="35" x2="55" y2="45" />
-                          <circle cx="70" cy="30" r="10" />
-                          <path d="M10 20 L90 20 L90 80 L10 80 Z" />
-                        </svg>
-                      </div>
+                      <Handshake
+                        className="mb-4 h-24 w-24 stroke-[1.25] text-surface-variant md:mb-6 md:h-32 md:w-32"
+                        aria-hidden
+                      />
                       <h3 className="text-xl md:text-2xl font-bold text-[#000d45] mb-2">No offers yet</h3>
                       <p className="text-on-surface-variant text-base md:text-lg max-w-md">
                         Your task is live. Offers will appear here when taskers respond.
@@ -989,19 +1096,29 @@ export default function TaskDetails({
                         return (
                           <div
                             key={bid.id}
-                            className="border border-outline-variant rounded-2xl p-4 md:p-6 hover:shadow-lg transition-all min-w-0 overflow-hidden"
+                            className="border border-outline-variant rounded-2xl p-4 md:p-6 hover:shadow-lg transition-all min-w-0"
                           >
                             <div className="flex flex-col sm:flex-row items-start gap-4 mb-4">
                               {taskerProfileHref ? (
                                 <Link
                                   href={taskerProfileHref}
-                                  className="shrink-0 rounded-full"
+                                  className="shrink-0 overflow-visible rounded-full"
                                   aria-label={`View ${taskerName}'s profile`}
                                 >
-                                  <UserAvatar src={taskerImage} name={taskerName} size="lg" />
+                                  <UserAvatar
+                                    src={taskerImage}
+                                    name={taskerName}
+                                    size="lg"
+                                    verified={isVerified}
+                                  />
                                 </Link>
                               ) : (
-                                <UserAvatar src={taskerImage} name={taskerName} size="lg" />
+                                <UserAvatar
+                                  src={taskerImage}
+                                  name={taskerName}
+                                  size="lg"
+                                  verified={isVerified}
+                                />
                               )}
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -1152,23 +1269,37 @@ export default function TaskDetails({
                           q.asked_by_image ||
                             (q.user && typeof q.user === 'object' ? q.user.profile_image : undefined)
                         );
+                        const askerVerified =
+                          q.user && typeof q.user === 'object'
+                            ? Boolean(q.user.is_verified_tasker)
+                            : false;
 
                         return (
                           <div
                             key={q.id}
-                            className="border border-outline-variant rounded-2xl p-4 md:p-6 min-w-0 overflow-hidden"
+                            className="border border-outline-variant rounded-2xl p-4 md:p-6 min-w-0"
                           >
                             <div className="flex items-start gap-3 md:gap-4 mb-3 md:mb-4">
                               {askerProfileHref ? (
                                 <Link
                                   href={askerProfileHref}
-                                  className="shrink-0 rounded-full"
+                                  className="shrink-0 overflow-visible rounded-full"
                                   aria-label={`View ${askerName}'s profile`}
                                 >
-                                  <UserAvatar src={askerImage} name={askerName} size="md" />
+                                  <UserAvatar
+                                    src={askerImage}
+                                    name={askerName}
+                                    size="md"
+                                    verified={askerVerified}
+                                  />
                                 </Link>
                               ) : (
-                                <UserAvatar src={askerImage} name={askerName} size="md" />
+                                <UserAvatar
+                                  src={askerImage}
+                                  name={askerName}
+                                  size="md"
+                                  verified={askerVerified}
+                                />
                               )}
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -1190,9 +1321,14 @@ export default function TaskDetails({
                             </div>
 
                             {(q.is_answered || q.answer) && q.answer ? (
-                              <div className="ml-4 sm:ml-8 md:ml-16 pl-3 sm:pl-4 md:pl-6 border-l-2 border-outline-variant min-w-0 overflow-hidden">
+                              <div className="ml-4 sm:ml-8 md:ml-16 pl-3 sm:pl-4 md:pl-6 border-l-2 border-outline-variant min-w-0">
                                 <div className="flex items-start gap-3 md:gap-4">
-                                  <UserAvatar src={posterAvatar} name={task.user.name} size="sm" />
+                                  <UserAvatar
+                                    src={posterAvatar}
+                                    name={task.user.name}
+                                    size="sm"
+                                    verified={posterVerified}
+                                  />
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                                       <h4 className="font-bold text-xs md:text-sm text-[#000d45]">
@@ -1292,7 +1428,7 @@ export default function TaskDetails({
             </div>
 
             <div className="pt-6 md:pt-10 border-t border-outline-variant">
-              <div className="flex flex-wrap items-center gap-3 sm:gap-4 w-full">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 md:gap-6 w-full">
                 <button
                   type="button"
                   onClick={onClose}
@@ -1313,6 +1449,39 @@ export default function TaskDetails({
                   </span>
                   <span>{viewsCount === 1 ? 'view' : 'views'}</span>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => void handleToggleBookmark()}
+                  disabled={bookmarkLoading}
+                  className={`p-2 md:p-3 hover:bg-surface-dim rounded-full transition-all disabled:opacity-50 ${
+                    isBookmarked ? 'text-error' : 'text-on-surface-variant'
+                  }`}
+                  title={isBookmarked ? 'Remove bookmark' : 'Save task'}
+                  aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark task'}
+                  aria-pressed={isBookmarked}
+                >
+                  {bookmarkLoading ? (
+                    <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" />
+                  ) : (
+                    <Heart
+                      className={`w-5 h-5 md:w-6 md:h-6 ${isBookmarked ? 'fill-current' : ''}`}
+                    />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleShareTask()}
+                  disabled={shareLoading}
+                  className="p-2 md:p-3 hover:bg-surface-dim rounded-full transition-all text-on-surface-variant disabled:opacity-50"
+                  title="Share task link"
+                  aria-label="Share task"
+                >
+                  {shareLoading ? (
+                    <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" />
+                  ) : (
+                    <Share2 className="w-5 h-5 md:w-6 md:h-6" />
+                  )}
+                </button>
               </div>
             </div>
           </div>

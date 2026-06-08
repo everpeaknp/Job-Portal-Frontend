@@ -4,6 +4,7 @@ import { getMediaUrl } from '@/lib/utils';
 import { formatTaskLocationShort } from '@/lib/nepalLocale';
 import {
   formatMyTaskStatusLabel,
+  formatTaskDisplayTitle,
   getTaskBidCount,
   canEditMyPostedTask,
   canDeleteMyPostedTask,
@@ -48,6 +49,7 @@ export function resolvePoster(task: ApiTask) {
       avatar: getMediaUrl(nested.profile_image),
       rating: nested.average_rating || 0,
       reviews: nested.total_reviews || 0,
+      verified: Boolean(nested.is_verified_tasker),
     };
   }
 
@@ -56,6 +58,7 @@ export function resolvePoster(task: ApiTask) {
     avatar: getMediaUrl(task.owner_image),
     rating: task.owner_rating || 0,
     reviews: 0,
+    verified: Boolean(task.owner_is_verified),
   };
 }
 
@@ -101,7 +104,7 @@ export function transformApiTaskToMyTaskView(
   return {
     id: taskId,
     slug: taskSlug,
-    title: task.title || 'Untitled Task',
+    title: formatTaskDisplayTitle(task.title || 'Untitled Task'),
     status: rawStatus,
     statusLabel: formatMyTaskStatusLabel(rawStatus),
     location: formatTaskLocationShort(task),
@@ -137,6 +140,7 @@ export function transformApiTaskToMyTaskView(
       name: poster.name,
       avatar: poster.avatar,
       rating: poster.rating,
+      verified: poster.verified,
     },
   };
 }

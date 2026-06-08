@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 'use client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
@@ -30,8 +30,13 @@ import {
 import { formatTimeSlotRequirement } from '@/lib/timeSlot';
 import { consumeSimilarTaskPrefill } from '@/lib/similarTask';
 import { flattenCategoriesForSelect } from '@/lib/taskUtils';
+import {
+  POST_TASK_TYPO,
+  postTaskBtnPrimary,
+  postTaskBtnSecondary,
+} from '@/components/post-task/postTaskStyles';
+import { PostTaskShell } from '@/components/post-task/PostTaskShell';
 
- 
 export default function App() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -589,56 +594,71 @@ export default function App() {
   const isBudgetStep = activeStep === 'budget';
   const canProceed = isStepValid(activeStep);
 
+  const handleClose = useCallback(() => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/discover');
+    }
+  }, [router]);
+
   return (
-    <div
-      className="flex h-dvh min-h-0 w-full flex-col overflow-hidden bg-white"
-      style={{ fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif' }}
-    >
-          <header className="z-20 flex h-14 shrink-0 items-center justify-between border-b border-outline-variant/60 bg-white px-4 sm:h-16 sm:px-6 md:h-20 md:px-8 lg:px-10 xl:px-12">
-            <div className="text-xl font-black leading-none tracking-tighter text-[#0066ff] select-none sm:text-[26px] md:text-[28px]">
-              tasknepal
-            </div>
+    <PostTaskShell onClose={handleClose}>
+      <div
+        className={`flex h-full min-h-0 w-full flex-col overflow-hidden bg-white ${POST_TASK_TYPO}`}
+      >
+          <header className="z-20 flex h-14 shrink-0 items-center justify-between bg-white px-4 sm:h-16 sm:px-6 md:h-[4.5rem] md:px-8 lg:px-10 xl:px-12">
             <button
               type="button"
-              onClick={() => {
-                window.location.href = '/discover';
-              }}
-              className="rounded-full p-2 text-gray-400 transition-all hover:bg-gray-100 hover:text-gray-800"
+              onClick={handleClose}
+              className="font-formula text-xl font-bold leading-none tracking-tight text-primary select-none sm:text-[26px] md:text-[28px]"
+            >
+              tasknepal
+            </button>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="rounded-full p-2.5 text-[#6a719a] transition-all hover:bg-[#eef2fa] hover:text-[#000d45]"
               aria-label="Close"
             >
-              <X className="h-6 w-6 stroke-[2.5]" />
+              <X className="h-5 w-5 stroke-[2.5] sm:h-6 sm:w-6" />
             </button>
           </header>
 
-          <MobileStepProgress activeStep={activeStep} />
+          <div className="shrink-0 px-5 sm:px-8 md:px-12 lg:hidden lg:px-16 xl:px-20">
+            <div className="mx-auto w-full max-w-5xl lg:max-w-6xl">
+              <MobileStepProgress activeStep={activeStep} />
+            </div>
+          </div>
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-            <Sidebar activeStep={activeStep} />
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-5 sm:px-8 md:px-12 lg:px-16 xl:px-20">
+            <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col overflow-hidden lg:max-w-6xl lg:flex-row lg:gap-10 xl:gap-12">
+              <Sidebar activeStep={activeStep} />
 
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-              <main className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] px-4 py-5 sm:px-8 sm:py-8 md:px-10 lg:px-12 lg:py-10 xl:px-16">
-                <div className="mx-auto w-full max-w-2xl pb-4 lg:max-w-3xl xl:max-w-4xl">
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={activeStep}
-                      initial={{ opacity: 0, x: 12 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -12 }}
-                      transition={{ duration: 0.25, ease: 'easeOut' }}
-                    >
-                      {renderStep()}
-                    </motion.div>
-                  </AnimatePresence>
-                </div>
-              </main>
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                <main className="no-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain [-webkit-overflow-scrolling:touch] py-5 sm:py-8 lg:py-10">
+                  <div className="w-full pb-4">
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={activeStep}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.22, ease: 'easeOut' }}
+                      >
+                        {renderStep()}
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+                </main>
 
-              <footer className="z-20 shrink-0 border-t border-gray-200 bg-white px-4 py-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-8 sm:py-5 md:px-10 lg:px-12 xl:px-16">
-                <div className="mx-auto flex w-full max-w-lg justify-center gap-3 sm:max-w-xl sm:gap-4 lg:mx-0 lg:max-w-3xl lg:justify-end xl:max-w-4xl">
+                <footer className="z-20 shrink-0 bg-white py-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:py-5">
+                  <div className="flex w-full max-w-md gap-3 sm:max-w-lg sm:gap-4">
                   {currentStepIndex > 0 && (
                     <button
                       type="button"
                       onClick={handleBack}
-                      className="min-h-12 flex-1 rounded-full bg-blue-50 px-4 py-3.5 text-sm font-bold text-[#0066ff] transition-all active:scale-[0.98] hover:bg-blue-100 sm:min-h-[52px] sm:max-w-[200px] sm:text-base lg:flex-none lg:px-10"
+                      className={`${postTaskBtnSecondary} flex min-h-12 flex-1 items-center justify-center px-6 py-3.5 text-sm sm:min-h-[52px] sm:text-base`}
                     >
                       Back
                     </button>
@@ -647,11 +667,9 @@ export default function App() {
                     type="button"
                     onClick={handleNext}
                     disabled={!canProceed || isLoading}
-                    className={`min-h-12 sm:min-h-[52px] ${currentStepIndex > 0 ? 'flex-[1.5] lg:flex-none lg:min-w-[220px]' : 'w-full lg:min-w-[280px]'} ${
-                      !canProceed || isLoading
-                        ? 'cursor-not-allowed bg-gray-200 text-gray-500'
-                        : 'bg-[#0066ff] text-white shadow-lg shadow-[#0066ff]/25 hover:bg-[#0052cc]'
-                    } flex items-center justify-center gap-2 rounded-full px-4 py-3.5 text-sm font-bold transition-all active:scale-[0.98] sm:text-base`}
+                    className={`${postTaskBtnPrimary} flex min-h-12 flex-1 items-center justify-center gap-2 px-6 py-3.5 text-sm sm:min-h-[52px] sm:text-base ${
+                      currentStepIndex === 0 ? 'w-full' : ''
+                    }`}
                   >
                     {isLoading ? (
                       <>
@@ -664,10 +682,12 @@ export default function App() {
                       'Next'
                     )}
                   </button>
-                </div>
-              </footer>
+                  </div>
+                </footer>
+              </div>
             </div>
           </div>
-    </div>
+      </div>
+    </PostTaskShell>
   );
 }

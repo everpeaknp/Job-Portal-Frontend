@@ -13,11 +13,29 @@
   --surface-dim: #f3f4f6;
   --surface-variant: #e5e7eb;
   --error: #ef4444;
+  /* shadcn / mapcn tokens */
+  --border: #e5e7eb;
+  --muted: #f3f4f6;
+  --muted-foreground: #6b7280;
+  --popover: #ffffff;
+  --popover-foreground: #171717;
+  --accent: #f3f4f6;
+  --ring: #1161fe;
+  /* Runtime font stacks (next/font vars live on <html>) */
+  --font-stack-body: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-stack-formula: var(--font-outfit), "PP Formula", ui-sans-serif, system-ui, sans-serif;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-accent: var(--accent);
+  --color-ring: var(--ring);
   --color-primary: var(--primary);
   --color-on-surface-variant: var(--on-surface-variant);
   --color-outline-variant: var(--outline-variant);
@@ -30,15 +48,21 @@
   --color-error: var(--error);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  /* Marketing homepage: PP Formula headlines; Manrope via next/font --font-manrope on <html> */
-  --font-formula: "PP Formula", ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  /* Tailwind font-* utilities → marketing stacks */
+  --font-formula: var(--font-stack-formula);
+  --font-body: var(--font-stack-body);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --border: #27272a;
+    --muted: #18181b;
+    --muted-foreground: #a1a1aa;
+    --popover: #18181b;
+    --popover-foreground: #ededed;
+    --accent: #27272a;
   }
 }
 

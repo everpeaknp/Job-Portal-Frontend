@@ -10,6 +10,7 @@ import {
 import { formatBudgetRange } from '@/lib/nepalLocale';
 import { useMobileFilterBodyLock } from '@/lib/filterBarMobile';
 import FilterDropdownPanel, { FilterPanelActions } from '@/components/common/FilterDropdownPanel';
+import { landingBody, landingHeadlineSm } from '@/components/LangingHome/landingTypography';
 
 const DEFAULT_BUDGET_MAX = 10000;
 
@@ -142,12 +143,12 @@ export default function FilterBar({
           : null;
 
   const filterTriggerClass = (active: boolean) =>
-    `flex min-h-[44px] touch-manipulation cursor-pointer items-center gap-1.5 whitespace-nowrap font-sans text-[13px] font-semibold transition-colors sm:min-h-0 sm:gap-2 ${
+    `flex min-h-[44px] touch-manipulation cursor-pointer items-center gap-1.5 whitespace-nowrap ${landingBody} text-[13px] font-semibold transition-colors sm:min-h-0 sm:gap-2 ${
       active ? 'text-[#2f6bff]' : 'text-black/70 hover:text-[#2f6bff]'
     }`;
 
   return (
-    <div className="relative z-[200] bg-white">
+    <div className={`relative z-[200] bg-white ${landingBody}`}>
       <div className="flex min-w-0 flex-col gap-2.5 px-3 py-2.5 sm:px-6 sm:py-3 lg:flex-row lg:items-center lg:gap-6 lg:px-10">
         <div className="flex min-w-0 items-center gap-2 lg:shrink-0">
           <button
@@ -171,7 +172,7 @@ export default function FilterBar({
                   query: e.target.value || undefined,
                 })
               }
-              className="w-full rounded-full bg-[#f1f4f9] py-2 pl-10 pr-4 font-sans text-[14px] outline-none transition-all placeholder:text-on-surface-variant/60 focus:bg-[#eef2f8]"
+              className="w-full rounded-full bg-[#f1f4f9] py-2 pl-10 pr-4 font-body text-[14px] outline-none transition-all placeholder:text-on-surface-variant/60 focus:bg-[#eef2f8]"
             />
           </div>
         </div>
@@ -185,7 +186,7 @@ export default function FilterBar({
                   key={filter.id}
                   type="button"
                   onClick={() => statusTabs.onChange(filter.id)}
-                  className={`min-h-[44px] shrink-0 touch-manipulation whitespace-nowrap font-sans text-[13px] font-semibold transition-colors sm:min-h-0 ${
+                  className={`min-h-[44px] shrink-0 touch-manipulation whitespace-nowrap font-body text-[13px] font-semibold transition-colors sm:min-h-0 ${
                     statusTabs.active === filter.id
                       ? 'text-[#2f6bff]'
                       : 'text-black/70 hover:text-[#2f6bff]'
@@ -236,7 +237,7 @@ export default function FilterBar({
                 <button
                   type="button"
                   onClick={() => setDraftCategory('')}
-                  className="font-sans text-[14px] font-bold text-primary hover:underline"
+                  className="font-body text-[14px] font-bold text-primary hover:underline"
                 >
                   Clear all
                 </button>
@@ -272,7 +273,7 @@ export default function FilterBar({
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     </div>
-                    <span className="font-sans text-[15px] font-medium text-on-surface transition-colors group-hover:text-primary sm:text-[16px]">
+                    <span className="font-body text-[15px] font-medium text-on-surface transition-colors group-hover:text-primary sm:text-[16px]">
                       {cat}
                     </span>
                   </label>
@@ -327,7 +328,7 @@ export default function FilterBar({
                       onFilterChange({ ...currentFilters, status: undefined });
                       setIsStatusOpen(false);
                     }}
-                    className={`flex min-h-[48px] w-full items-center rounded-2xl px-4 py-3 text-left font-sans text-[15px] font-semibold transition-all sm:px-5 sm:py-4 sm:text-[16px] ${
+                    className={`flex min-h-[48px] w-full items-center rounded-2xl px-4 py-3 text-left font-body text-[15px] font-semibold transition-all sm:px-5 sm:py-4 sm:text-[16px] ${
                       !draftStatus ? 'bg-[#f1f4f9] text-[#000d45]' : 'text-[#000d45] hover:bg-[#f1f4f9]/50'
                     }`}
                   >
@@ -344,7 +345,7 @@ export default function FilterBar({
                           onFilterChange({ ...currentFilters, status: option.value });
                           setIsStatusOpen(false);
                         }}
-                        className={`flex min-h-[48px] w-full items-center rounded-2xl px-4 py-3 text-left font-sans text-[15px] font-semibold transition-all sm:px-5 sm:py-4 sm:text-[16px] ${
+                        className={`flex min-h-[48px] w-full items-center rounded-2xl px-4 py-3 text-left font-body text-[15px] font-semibold transition-all sm:px-5 sm:py-4 sm:text-[16px] ${
                           isSelected ? 'bg-[#f1f4f9] text-[#000d45]' : 'text-[#000d45] hover:bg-[#f1f4f9]/50'
                         }`}
                       >
@@ -386,7 +387,7 @@ export default function FilterBar({
             >
               <div className="space-y-6">
                 <div className="text-center">
-                  <span className="text-xl font-bold text-[#000d45] sm:text-2xl">
+                  <span className={`${landingHeadlineSm} text-xl text-[#000d45] sm:text-2xl`}>
                     {formatBudgetRange(draftBudgetMin, draftBudgetMax)}
                   </span>
                 </div>
@@ -461,7 +462,7 @@ export default function FilterBar({
                       key={option.id}
                       type="button"
                       onClick={() => handleSortChange(option.id)}
-                      className={`flex min-h-[48px] w-full items-center gap-3 rounded-2xl px-4 py-3 text-left font-sans text-[15px] font-semibold transition-all sm:gap-4 sm:px-5 sm:py-4 sm:text-[16px] ${
+                      className={`flex min-h-[48px] w-full items-center gap-3 rounded-2xl px-4 py-3 text-left font-body text-[15px] font-semibold transition-all sm:gap-4 sm:px-5 sm:py-4 sm:text-[16px] ${
                         isSelected ? 'bg-[#f1f4f9] text-[#000d45]' : 'text-[#000d45] hover:bg-[#f1f4f9]/50'
                       }`}
                     >

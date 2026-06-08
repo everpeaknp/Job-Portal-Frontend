@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'motion/react';
 import {
@@ -11,17 +11,28 @@ import {
   Lock,
   ExternalLink,
   Zap,
+  BadgeCheck,
   Droplets,
   Clock,
   Award,
   Plus,
+  Loader2,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { userService } from '@/services';
 import { Badge } from '@/types';
 import { toast } from 'sonner';
 import BadgeUploadModal, {
   type BadgeUploadPayload,
 } from '@/components/tasker-dashboard/BadgeUploadModal';
+import {
+  landingBody,
+  landingBodyMuted,
+  landingHeadline,
+  landingHeadlineSm,
+} from '@/components/LangingHome/landingTypography';
+
+const BADGES_TYPO = `${landingBody} [&_h1]:font-formula [&_h1]:font-black [&_h1]:tracking-tight [&_h2]:font-formula [&_h2]:font-extrabold [&_h2]:tracking-tight [&_h3]:font-formula [&_h3]:font-bold [&_h3]:tracking-tight`;
 
 type DashboardBadgeType =
   | 'police_check'
@@ -29,6 +40,8 @@ type DashboardBadgeType =
   | 'mobile_verified'
   | 'electrical_licence'
   | 'plumbing_licence';
+
+type SectionId = 'identity' | 'licences';
 
 const DOCUMENT_BADGE_TYPES = new Set<DashboardBadgeType>([
   'police_check',
@@ -42,78 +55,187 @@ const BADGE_UPLOAD_TITLES: Record<string, string> = {
   plumbing_licence: 'Upload Plumbing Licence',
 };
 
-function BadgeStatus({
-  badgeType,
-  badges,
-  onAdd,
-  onUpload,
-  addLabel = 'Add',
-  verifiedLabel = 'Active',
-}: {
-  badgeType: DashboardBadgeType;
-  badges: Badge[];
-  onAdd: (type: DashboardBadgeType) => void;
-  onUpload?: (type: DashboardBadgeType) => void;
-  addLabel?: string;
-  verifiedLabel?: string;
-}) {
+const CORE_BADGE_TYPES: DashboardBadgeType[] = [
+  'police_check',
+  'payment_verified',
+  'mobile_verified',
+  'electrical_licence',
+  'plumbing_licence',
+];
+
+const SECTION_NAV: {
+  id: SectionId;
+  label: string;
+  icon: React.ElementType;
+  description: string;
+}[] = [
+  {
+    id: 'identity',
+    label: 'ID & account',
+    icon: ShieldCheck,
+    description: 'Identity and payments',
+  },
+  {
+    id: 'licences',
+    label: 'Licences',
+    icon: BadgeCheck,
+    description: 'Trade certifications',
+  },
+];
+
+type BadgeVisualStatus = 'verified' | 'pending' | 'none';
+
+function getBadgeStatus(badgeType: DashboardBadgeType, badges: Badge[]): BadgeVisualStatus {
   const record = badges.find((b) => b.badge_type === badgeType);
-  const needsDocument = DOCUMENT_BADGE_TYPES.has(badgeType);
+  if (record?.is_verified) return 'verified';
+  if (record && !record.is_verified) return 'pending';
+  return 'none';
+}
 
-  if (record?.is_verified) {
+function StatusChip({
+  status,
+  label,
+}: {
+  status: BadgeVisualStatus;
+  label?: string;
+}) {
+  if (status === 'verified') {
     return (
-      <div className="flex flex-col items-stretch sm:items-end gap-2">
-        <div className="px-5 py-2 bg-green-50 text-green-700 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 border border-green-100">
-          <CheckCircle2 className="w-3.5 h-3.5" />
-          {verifiedLabel}
-        </div>
-        {record.verified_at ? (
-          <p className="text-[10px] font-bold text-green-700/80 uppercase tracking-widest text-center sm:text-right">
-            Verified {new Date(record.verified_at).toLocaleDateString()}
-          </p>
-        ) : null}
-        {record.verification_document ? (
-          <a
-            href={record.verification_document}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs font-bold text-primary uppercase tracking-widest hover:underline text-center sm:text-right"
-          >
-            View document
-          </a>
-        ) : null}
-      </div>
+      <span
+        className={cn(
+          landingHeadlineSm,
+          'inline-flex items-center gap-2 rounded-xl border border-green-100 bg-green-50 px-4 py-2 text-xs text-green-700',
+        )}
+      >
+        <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        {label ?? 'Active'}
+      </span>
     );
   }
-
-  if (record && !record.is_verified) {
+  if (status === 'pending') {
     return (
-      <div className="flex flex-col items-stretch sm:items-end gap-3">
-        <div className="px-5 py-2 bg-amber-50 text-amber-800 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 border border-amber-100">
-          <Clock className="w-3.5 h-3.5" />
-          Pending review
-        </div>
-        {needsDocument && onUpload ? (
-          <button
-            type="button"
-            onClick={() => onUpload(badgeType)}
-            className="text-xs font-black text-primary uppercase tracking-[0.2em] hover:underline"
-          >
-            {record.verification_document ? 'Replace document' : 'Upload document'}
-          </button>
-        ) : null}
-      </div>
+      <span
+        className={cn(
+          landingHeadlineSm,
+          'inline-flex items-center gap-2 rounded-xl border border-amber-100 bg-amber-50 px-4 py-2 text-xs text-amber-800',
+        )}
+      >
+        <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        Pending review
+      </span>
     );
   }
+  return null;
+}
 
+function PrimaryBtn({
+  children,
+  onClick,
+  disabled,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
   return (
     <button
       type="button"
-      onClick={() => onAdd(badgeType)}
-      className="bg-[#1161fe] text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:opacity-90 transition-all shadow-sm group-hover:shadow-md active:scale-95"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        landingBody,
+        'inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl bg-[#1161fe] px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50',
+      )}
     >
-      {needsDocument ? 'Upload' : addLabel}
+      {children}
     </button>
+  );
+}
+
+function PrimaryLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        landingBody,
+        'inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl bg-[#1161fe] px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition hover:opacity-90 active:scale-[0.98]',
+      )}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function GhostBtn({
+  children,
+  onClick,
+  disabled,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        landingBody,
+        'text-sm font-semibold text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-50',
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+interface BadgeItemProps {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  status: BadgeVisualStatus;
+  statusLabel?: string;
+  footer?: React.ReactNode;
+  action: React.ReactNode;
+}
+
+function BadgeItem({ icon, title, description, status, statusLabel, footer, action }: BadgeItemProps) {
+  return (
+    <div className="flex flex-col gap-6 rounded-[24px] border border-outline-variant/70 bg-surface-low/30 p-5 sm:flex-row sm:items-center sm:gap-8 sm:p-6">
+      <div className="rounded-2xl bg-blue-50 p-4 text-primary">{icon}</div>
+      <div className="min-w-0 flex-1 space-y-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <h3 className={cn(landingHeadline, 'text-lg text-[#000d45]')}>{title}</h3>
+          <StatusChip status={status} label={statusLabel} />
+        </div>
+        <p className={cn(landingBodyMuted, 'text-sm leading-relaxed')}>{description}</p>
+        {footer}
+      </div>
+      <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end">{action}</div>
+    </div>
+  );
+}
+
+function BadgesLoadingSkeleton() {
+  return (
+    <div className={cn(BADGES_TYPO, 'max-w-5xl animate-pulse space-y-8 pb-20')}>
+      <div className="space-y-3">
+        <div className="h-3 w-24 rounded bg-surface-low" />
+        <div className="h-10 w-72 rounded bg-surface-low" />
+        <div className="h-4 w-full max-w-lg rounded bg-surface-low" />
+      </div>
+      <div className="grid gap-8 lg:grid-cols-12">
+        <div className="space-y-4 lg:col-span-4">
+          <div className="h-40 rounded-[28px] bg-surface-low" />
+          <div className="h-56 rounded-[28px] bg-surface-low" />
+        </div>
+        <div className="space-y-6 lg:col-span-8">
+          <div className="h-80 rounded-[32px] bg-surface-low" />
+          <div className="h-96 rounded-[32px] bg-surface-low" />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -121,6 +243,7 @@ export default function Badges() {
   const [badges, setBadges] = useState<Badge[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<SectionId>('identity');
   const [uploadModal, setUploadModal] = useState<{
     badgeType: DashboardBadgeType | 'custom_licence';
     title: string;
@@ -133,7 +256,6 @@ export default function Badges() {
     try {
       setLoading(true);
       const response = await userService.getBadges();
-
       if (response.success && response.data) {
         setBadges(response.data);
       }
@@ -149,6 +271,33 @@ export default function Badges() {
   useEffect(() => {
     fetchBadges();
   }, [fetchBadges]);
+
+  useEffect(() => {
+    if (loading) return;
+
+    const sectionIds = SECTION_NAV.map((s) => `badges-section-${s.id}`);
+    const elements = sectionIds
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => el !== null);
+
+    if (elements.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        if (visible[0]?.target.id) {
+          const id = visible[0].target.id.replace('badges-section-', '') as SectionId;
+          setActiveSection(id);
+        }
+      },
+      { rootMargin: '-20% 0px -55% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] },
+    );
+
+    elements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [loading]);
 
   const openUploadModal = (
     badgeType: DashboardBadgeType | 'custom_licence',
@@ -201,9 +350,8 @@ export default function Badges() {
   };
 
   const handleUploadSubmit = async (payload: BadgeUploadPayload) => {
-    if (!uploadModal) {
-      return;
-    }
+    if (!uploadModal) return;
+
     const { badgeType, variant } = uploadModal;
     try {
       setSubmitting(badgeType);
@@ -231,33 +379,70 @@ export default function Badges() {
   };
 
   const getBadgeIcon = (badgeType: string) => {
+    const props = { className: 'h-8 w-8', strokeWidth: 2 as const };
     switch (badgeType) {
       case 'police_check':
-        return <ShieldCheck className="w-10 h-10 text-blue-950" />;
+        return <ShieldCheck {...props} />;
       case 'payment_verified':
-        return <CreditCard className="w-10 h-10 text-blue-950" />;
+        return <CreditCard {...props} />;
       case 'mobile_verified':
-        return <Smartphone className="w-10 h-10 text-blue-950" />;
+        return <Smartphone {...props} />;
       case 'electrical_licence':
-        return <Zap className="w-10 h-10 text-blue-950" />;
+        return <Zap {...props} />;
       case 'plumbing_licence':
-        return <Droplets className="w-10 h-10 text-blue-950" />;
+        return <Droplets {...props} />;
       default:
-        return <ShieldCheck className="w-10 h-10 text-blue-950" />;
+        return <Award {...props} />;
     }
   };
 
   const badgeList = Array.isArray(badges) ? badges : [];
   const customLicenceBadges = badgeList.filter((b) => b.badge_type === 'custom_licence');
-  const verifiedLicenceBadges = badgeList.filter(
-    (b) =>
-      (b.badge_type === 'electrical_licence' ||
-        b.badge_type === 'plumbing_licence' ||
-        b.badge_type === 'custom_licence') &&
-      b.is_verified,
-  );
   const mobileActive = badgeList.some((b) => b.badge_type === 'mobile_verified' && b.is_verified);
   const paymentRecord = badgeList.find((b) => b.badge_type === 'payment_verified');
+
+  const sectionCounts = useMemo(() => {
+    const identityTypes: DashboardBadgeType[] = [
+      'police_check',
+      'payment_verified',
+      'mobile_verified',
+    ];
+    const licenceTypes: DashboardBadgeType[] = [
+      'electrical_licence',
+      'plumbing_licence',
+    ];
+
+    const countVerified = (types: DashboardBadgeType[]) =>
+      types.filter((type) =>
+        badgeList.some((b) => b.badge_type === type && b.is_verified),
+      ).length;
+
+    const customVerified = customLicenceBadges.filter((b) => b.is_verified).length;
+
+    return {
+      identity: countVerified(identityTypes),
+      licences: countVerified(licenceTypes) + customVerified,
+    };
+  }, [badgeList, customLicenceBadges]);
+
+  const trustProgress = useMemo(() => {
+    const verified = CORE_BADGE_TYPES.filter((type) =>
+      badgeList.some((b) => b.badge_type === type && b.is_verified),
+    ).length;
+    return {
+      verified,
+      total: CORE_BADGE_TYPES.length,
+      percent: Math.round((verified / CORE_BADGE_TYPES.length) * 100),
+    };
+  }, [badgeList]);
+
+  const scrollToSection = useCallback((id: SectionId) => {
+    setActiveSection(id);
+    document.getElementById(`badges-section-${id}`)?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  }, []);
 
   const openCustomReplace = (badge: Badge) => {
     setUploadModal({
@@ -269,302 +454,402 @@ export default function Badges() {
     });
   };
 
-  const commonBadgeStyle =
-    'group bg-white p-8 rounded-[40px] border border-gray-100 shadow-sm transition-all hover:shadow-xl hover:shadow-blue-900/5 flex flex-col md:flex-row md:items-center gap-8';
+  const renderDocAction = (badgeType: DashboardBadgeType) => {
+    const record = badgeList.find((b) => b.badge_type === badgeType);
+    const status = getBadgeStatus(badgeType, badgeList);
+    const busy = submitting === badgeType;
+
+    if (status === 'verified') {
+      return record?.verification_document ? (
+        <a
+          href={record.verification_document}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(landingBody, 'text-sm font-semibold text-primary hover:underline')}
+        >
+          View document
+        </a>
+      ) : null;
+    }
+
+    if (status === 'pending') {
+      return (
+        <GhostBtn disabled={busy} onClick={() => openUploadModal(badgeType)}>
+          {busy ? 'Uploading…' : 'Replace document'}
+        </GhostBtn>
+      );
+    }
+
+    return (
+      <PrimaryBtn disabled={busy} onClick={() => handleAddBadge(badgeType)}>
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+        Upload
+      </PrimaryBtn>
+    );
+  };
+
+  if (loading) {
+    return <BadgesLoadingSkeleton />;
+  }
+
+  const policeRecord = badgeList.find((b) => b.badge_type === 'police_check');
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="max-w-4xl space-y-12 pb-24"
+      initial={{ opacity: 0, x: 16 }}
+      animate={{ opacity: 1, x: 0 }}
+      className={cn(BADGES_TYPO, 'max-w-5xl space-y-8 pb-20')}
     >
-      <header className="space-y-6">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-1 w-10 bg-primary rounded-full" />
-            <span className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">
-              Trust & Safety
-            </span>
-          </div>
-          <h1 className="text-2xl font-black uppercase tracking-tighter text-blue-950 sm:text-4xl">
-            Verified Badges
-          </h1>
-        </div>
-
-        <div className="bg-blue-950 text-white p-8 rounded-[40px] shadow-2xl shadow-blue-900/20 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-400/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
-          <div className="relative z-10 space-y-4">
-            <p className="text-xl font-bold leading-relaxed tracking-tight">
-              Badges help members be sure who you are and what you can do! The more you collect,
-              the more Job Posters and Taskers will trust in your abilities.
-            </p>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 text-sm text-blue-200/60 font-medium">
-              <span className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-400 font-black" />
-                A green tick shows active verification
-              </span>
-              <button
-                type="button"
-                className="flex items-center gap-1 text-white underline font-bold hover:text-blue-200 transition-colors"
-              >
-                Learn more <ExternalLink className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        </div>
+      <header>
+        <p
+          className={cn(
+            landingHeadlineSm,
+            'mb-2 text-[10px] uppercase tracking-[0.3em] text-primary',
+          )}
+        >
+          Trust & safety
+        </p>
+        <h1 className={cn(landingHeadline, 'text-2xl text-[#000d45] sm:text-4xl')}>
+          Verified badges
+        </h1>
+        <p className={cn(landingBodyMuted, 'mt-2 max-w-xl text-sm leading-relaxed')}>
+          Badges help members know who you are and what you can do. The more you collect, the more
+          customers trust your profile.
+        </p>
       </header>
 
-      <section className="space-y-8">
-        <h2 className="text-2xl font-black text-blue-950 uppercase tracking-tighter flex items-center gap-3">
-          <ShieldCheck className="w-7 h-7 text-primary" />
-          ID Badges
-        </h2>
-
-        {loading ? (
-          <div className="text-center py-16">
-            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-gray-500 font-medium">Loading badges...</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-6">
-            <div className={commonBadgeStyle}>
-              <div className="p-6 bg-surface-low rounded-3xl group-hover:scale-110 transition-transform duration-500">
-                {getBadgeIcon('police_check')}
-              </div>
-              <div className="flex-1 space-y-2">
-                <h3 className="text-xl font-black text-blue-950">Police Check</h3>
-                <p className="text-gray-500 font-medium leading-relaxed">
-                  Provide peace of mind to other members by successfully completing a Police Check.
-                </p>
-              </div>
-              <BadgeStatus
-                badgeType="police_check"
-                badges={badgeList}
-                onAdd={handleAddBadge}
-                onUpload={openUploadModal}
-              />
-            </div>
-
-            <div className={commonBadgeStyle}>
-              <div className="p-6 bg-surface-low rounded-3xl group-hover:scale-110 transition-transform duration-500">
-                {getBadgeIcon('payment_verified')}
-              </div>
-              <div className="flex-1 space-y-2">
-                <h3 className="text-xl font-black text-blue-950">Payment Method Verified</h3>
-                <p className="text-gray-500 font-medium leading-relaxed">
-                  Make payments with ease by having your payment method verified.
-                </p>
-              </div>
-              <div className="flex flex-col items-stretch sm:items-end gap-3">
-                {paymentRecord?.is_verified ? (
-                  <BadgeStatus
-                    badgeType="payment_verified"
-                    badges={badgeList}
-                    onAdd={handleAddBadge}
-                  />
-                ) : (
-                  <>
-                    <Link
-                      href="/tasker-dashboard/methods"
-                      className="bg-[#1161fe] text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:opacity-90 transition-all shadow-sm text-center"
-                    >
-                      Link payment method
-                    </Link>
-                    {paymentRecord && !paymentRecord.is_verified ? (
-                      <BadgeStatus
-                        badgeType="payment_verified"
-                        badges={badgeList}
-                        onAdd={handleAddBadge}
-                      />
-                    ) : null}
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className={commonBadgeStyle}>
-              <div className="p-6 bg-surface-low rounded-3xl group-hover:scale-110 transition-transform duration-500">
-                {getBadgeIcon('mobile_verified')}
-              </div>
-              <div className="flex-1 space-y-2">
-                <h3 className="text-xl font-black text-blue-950">Mobile Verified</h3>
-                <p className="text-gray-500 font-medium leading-relaxed">
-                  Verified mobile number for instant task notifications.
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                {mobileActive ? (
-                  <div className="px-5 py-2 bg-green-50 text-green-700 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 border border-green-100">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    Active
-                  </div>
-                ) : (
-                  <Link
-                    href="/tasker-dashboard/profile"
-                    className="bg-[#1161fe] text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:opacity-90 transition-all shadow-sm"
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
+        <aside className="lg:col-span-4">
+          <div className="space-y-4 lg:sticky lg:top-24">
+            <div className="rounded-[28px] border border-outline-variant bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <p
+                    className={cn(
+                      landingHeadlineSm,
+                      'text-xs uppercase tracking-[0.2em] text-gray-400',
+                    )}
                   >
-                    Verify mobile
-                  </Link>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </section>
-
-      <section className="space-y-8">
-        <h2 className="text-2xl font-black text-blue-950 uppercase tracking-tighter flex items-center gap-3">
-          <Zap className="w-7 h-7 text-primary" />
-          Licence Badges
-        </h2>
-
-        {!loading && verifiedLicenceBadges.length > 0 ? (
-          <div className="rounded-[32px] border border-green-200 bg-green-50/80 p-6 sm:p-8 space-y-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
-              <h3 className="text-sm font-black text-green-800 uppercase tracking-[0.2em]">
-                Verified licences
-              </h3>
-            </div>
-            <ul className="flex flex-wrap gap-2">
-              {verifiedLicenceBadges.map((badge) => (
-                <li
-                  key={badge.id}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-green-200 text-sm font-bold text-green-900"
+                    Trust score
+                  </p>
+                  <p className={cn(landingHeadline, 'mt-1 text-2xl text-[#000d45]')}>
+                    {trustProgress.percent}%
+                  </p>
+                </div>
+                <div
+                  className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"
+                  aria-hidden
                 >
-                  <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
-                  {badge.name}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-
-        <div className="grid grid-cols-1 gap-6">
-          <div className={commonBadgeStyle}>
-            <div className="p-6 bg-surface-low rounded-3xl group-hover:scale-110 transition-transform duration-500">
-              {getBadgeIcon('electrical_licence')}
-            </div>
-            <div className="flex-1 space-y-2">
-              <h3 className="text-xl font-black text-blue-950">Electrical Licence</h3>
-              <p className="text-gray-500 font-medium leading-relaxed">
-                Let others know you hold an electrical contractor licence with this badge.
+                  <ShieldCheck className="h-6 w-6" />
+                </div>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-surface-low">
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-500"
+                  style={{ width: `${trustProgress.percent}%` }}
+                />
+              </div>
+              <p className={cn(landingBodyMuted, 'mt-3 text-xs')}>
+                {trustProgress.verified} of {trustProgress.total} core badges verified
               </p>
             </div>
-            <BadgeStatus
-              badgeType="electrical_licence"
-              badges={badgeList}
-              onAdd={handleAddBadge}
-              onUpload={openUploadModal}
-              verifiedLabel="Verified"
-            />
-          </div>
 
-          <div className={commonBadgeStyle}>
-            <div className="p-6 bg-surface-low rounded-3xl group-hover:scale-110 transition-transform duration-500">
-              {getBadgeIcon('plumbing_licence')}
-            </div>
-            <div className="flex-1 space-y-2">
-              <h3 className="text-xl font-black text-blue-950">Plumbing Licence</h3>
-              <p className="text-gray-500 font-medium leading-relaxed">
-                Let others know you hold a valid Plumbing licence with this badge.
-              </p>
-            </div>
-            <BadgeStatus
-              badgeType="plumbing_licence"
-              badges={badgeList}
-              onAdd={handleAddBadge}
-              onUpload={openUploadModal}
-              verifiedLabel="Verified"
-            />
-          </div>
+            <nav
+              className="rounded-[28px] border border-outline-variant bg-white p-3 shadow-sm"
+              aria-label="Badge sections"
+            >
+              <ul className="space-y-1">
+                {SECTION_NAV.map((item) => {
+                  const Icon = item.icon;
+                  const count = sectionCounts[item.id];
+                  const isActive = activeSection === item.id;
+                  const max = item.id === 'identity' ? 3 : 2 + customLicenceBadges.length;
 
-          {customLicenceBadges.length > 0 ? (
-            <div className="space-y-4 pt-2">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.25em]">
-                Your custom licences
-              </p>
-              {customLicenceBadges.map((badge) => (
-                <div key={badge.id} className={commonBadgeStyle}>
-                  <div className="p-6 bg-surface-low rounded-3xl">
-                    <Award className="w-10 h-10 text-blue-950" />
-                  </div>
-                  <div className="flex-1 space-y-2 min-w-0">
-                    <h3 className="text-xl font-black text-blue-950 truncate">{badge.name}</h3>
-                    {badge.description ? (
-                      <p className="text-gray-500 font-medium leading-relaxed">{badge.description}</p>
-                    ) : (
-                      <p className="text-gray-500 font-medium leading-relaxed">
-                        Custom licence or certification on your profile.
-                      </p>
-                    )}
-                    {badge.document_number ? (
-                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                        Ref: {badge.document_number}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="flex flex-col items-stretch sm:items-end gap-3 shrink-0">
-                    {badge.is_verified ? (
-                      <div className="px-5 py-2 bg-green-50 text-green-700 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 border border-green-100">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Verified
-                      </div>
-                    ) : (
-                      <div className="px-5 py-2 bg-amber-50 text-amber-800 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 border border-amber-100">
-                        <Clock className="w-3.5 h-3.5" />
-                        Pending review
-                      </div>
-                    )}
-                    {badge.verification_document ? (
-                      <a
-                        href={badge.verification_document}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs font-bold text-primary uppercase tracking-widest hover:underline text-center sm:text-right"
-                      >
-                        View document
-                      </a>
-                    ) : null}
-                    {!badge.is_verified ? (
+                  return (
+                    <li key={item.id}>
                       <button
                         type="button"
-                        onClick={() => openCustomReplace(badge)}
-                        className="text-xs font-black text-primary uppercase tracking-[0.2em] hover:underline"
+                        onClick={() => scrollToSection(item.id)}
+                        className={cn(
+                          'flex w-full min-h-[48px] items-center gap-3 rounded-2xl px-4 py-3 text-left transition-all',
+                          isActive
+                            ? 'bg-primary text-white shadow-md shadow-primary/20'
+                            : 'text-[#000d45] hover:bg-surface-low',
+                        )}
                       >
-                        Replace document
+                        <Icon
+                          className={cn(
+                            'h-4 w-4 shrink-0',
+                            isActive ? 'text-white' : 'text-primary',
+                          )}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className={cn(landingHeadlineSm, 'block text-sm')}>
+                            {item.label}
+                          </span>
+                          <span
+                            className={cn(
+                              landingBody,
+                              'block text-xs font-medium',
+                              isActive ? 'text-white/80' : 'text-gray-400',
+                            )}
+                          >
+                            {item.description}
+                          </span>
+                        </span>
+                        <span
+                          className={cn(
+                            landingHeadlineSm,
+                            'rounded-full px-2 py-0.5 text-xs',
+                            isActive ? 'bg-white/20 text-white' : 'bg-surface-low text-gray-500',
+                          )}
+                        >
+                          {count}/{max}
+                        </span>
                       </button>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            </nav>
 
-          <button
-            type="button"
-            onClick={() => openUploadModal('custom_licence', 'custom')}
-            className="relative z-0 w-full group bg-gradient-to-br from-blue-50 to-white p-8 rounded-[40px] border-2 border-dashed border-primary/30 hover:border-primary/60 transition-all flex flex-col sm:flex-row sm:items-center gap-6 text-left"
-          >
-            <div className="p-6 bg-white rounded-3xl shadow-sm group-hover:scale-105 transition-transform">
-              <Plus className="w-10 h-10 text-primary" />
-            </div>
-            <div className="flex-1 space-y-2">
-              <h3 className="text-xl font-black text-blue-950">Add custom licence badge</h3>
-              <p className="text-gray-500 font-medium leading-relaxed">
-                Upload any trade licence or certification not listed above — HVAC, gas fitting,
-                builder, arborist, and more.
+            <div className="flex items-start gap-3 rounded-2xl border border-green-100 bg-green-50/60 px-4 py-3">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" aria-hidden />
+              <p className={cn(landingBody, 'text-xs font-medium leading-relaxed text-green-800')}>
+                A green tick on your public profile means our team has verified that badge.
               </p>
             </div>
-            <span className="bg-[#1161fe] text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest shrink-0">
-              Upload
-            </span>
-          </button>
+
+            <div className="flex items-start gap-3 rounded-2xl border border-outline-variant bg-white px-4 py-3 shadow-sm">
+              <Lock className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" aria-hidden />
+              <p className={cn(landingBodyMuted, 'text-xs leading-relaxed')}>
+                Documents are encrypted and reviewed only for verification.{' '}
+                <button type="button" className="font-semibold text-primary hover:underline">
+                  Trust center
+                </button>
+              </p>
+            </div>
+          </div>
+        </aside>
+
+        <div className="space-y-6 lg:col-span-8">
+          <section
+            id="badges-section-identity"
+            className="scroll-mt-28 rounded-[32px] border border-outline-variant bg-white p-6 shadow-sm sm:p-8"
+          >
+            <div className="mb-6 flex items-start gap-4">
+              <div className="rounded-2xl bg-blue-50 p-3 text-primary">
+                <ShieldCheck className="h-6 w-6" />
+              </div>
+              <div>
+                <h2 className={cn(landingHeadline, 'text-xl text-[#000d45]')}>ID & account</h2>
+                <p className={cn(landingBodyMuted, 'mt-1 text-sm')}>
+                  Identity and payment verification customers look for first.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <BadgeItem
+                icon={getBadgeIcon('police_check')}
+                title="Police check"
+                description="Provide peace of mind by successfully completing a police check."
+                status={getBadgeStatus('police_check', badgeList)}
+                footer={
+                  policeRecord?.verified_at ? (
+                    <p className={cn(landingBodyMuted, 'text-xs')}>
+                      Verified {new Date(policeRecord.verified_at).toLocaleDateString()}
+                    </p>
+                  ) : null
+                }
+                action={renderDocAction('police_check')}
+              />
+
+              <BadgeItem
+                icon={getBadgeIcon('payment_verified')}
+                title="Payment method verified"
+                description="Make payments with ease by having your payment method verified."
+                status={
+                  paymentRecord?.is_verified
+                    ? 'verified'
+                    : paymentRecord
+                      ? 'pending'
+                      : 'none'
+                }
+                action={
+                  paymentRecord?.is_verified ? (
+                    <Link
+                      href="/tasker-dashboard/methods"
+                      className={cn(
+                        landingBody,
+                        'text-sm font-semibold text-primary hover:underline',
+                      )}
+                    >
+                      Manage methods
+                    </Link>
+                  ) : (
+                    <>
+                      <PrimaryLink href="/tasker-dashboard/methods">Link payment method</PrimaryLink>
+                      {paymentRecord && !paymentRecord.is_verified ? (
+                        <PrimaryBtn
+                          disabled={submitting === 'payment_verified'}
+                          onClick={() => handleAddBadge('payment_verified')}
+                        >
+                          {submitting === 'payment_verified' ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : null}
+                          Activate badge
+                        </PrimaryBtn>
+                      ) : null}
+                    </>
+                  )
+                }
+              />
+
+              <BadgeItem
+                icon={getBadgeIcon('mobile_verified')}
+                title="Mobile verified"
+                description="Verified mobile number for instant task notifications."
+                status={mobileActive ? 'verified' : 'none'}
+                action={
+                  mobileActive ? (
+                    <Link
+                      href="/tasker-dashboard/profile"
+                      className={cn(
+                        landingBody,
+                        'text-sm font-semibold text-primary hover:underline',
+                      )}
+                    >
+                      View profile
+                    </Link>
+                  ) : (
+                    <PrimaryLink href="/tasker-dashboard/settings?tab=mobile">
+                      Verify mobile
+                    </PrimaryLink>
+                  )
+                }
+              />
+            </div>
+          </section>
+
+          <section
+            id="badges-section-licences"
+            className="scroll-mt-28 rounded-[32px] border border-outline-variant bg-white p-6 shadow-sm sm:p-8"
+          >
+            <div className="mb-6 flex items-start gap-4">
+              <div className="rounded-2xl bg-blue-50 p-3 text-primary">
+                <BadgeCheck className="h-6 w-6" />
+              </div>
+              <div>
+                <h2 className={cn(landingHeadline, 'text-xl text-[#000d45]')}>Licence badges</h2>
+                <p className={cn(landingBodyMuted, 'mt-1 text-sm')}>
+                  Trade licences and certifications that prove your qualifications.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <BadgeItem
+                icon={getBadgeIcon('electrical_licence')}
+                title="Electrical licence"
+                description="Let others know you hold an electrical contractor licence."
+                status={getBadgeStatus('electrical_licence', badgeList)}
+                statusLabel="Verified"
+                action={renderDocAction('electrical_licence')}
+              />
+
+              <BadgeItem
+                icon={getBadgeIcon('plumbing_licence')}
+                title="Plumbing licence"
+                description="Let others know you hold a valid plumbing licence."
+                status={getBadgeStatus('plumbing_licence', badgeList)}
+                statusLabel="Verified"
+                action={renderDocAction('plumbing_licence')}
+              />
+
+              {customLicenceBadges.map((badge) => (
+                <BadgeItem
+                  key={badge.id}
+                  icon={getBadgeIcon('custom')}
+                  title={badge.name}
+                  description={
+                    badge.description ||
+                    'Custom licence or certification on your profile.'
+                  }
+                  status={badge.is_verified ? 'verified' : 'pending'}
+                  statusLabel="Verified"
+                  footer={
+                    badge.document_number ? (
+                      <p className={cn(landingBodyMuted, 'text-xs')}>
+                        Ref: {badge.document_number}
+                      </p>
+                    ) : null
+                  }
+                  action={
+                    <>
+                      {badge.verification_document ? (
+                        <a
+                          href={badge.verification_document}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={cn(
+                            landingBody,
+                            'text-sm font-semibold text-primary hover:underline',
+                          )}
+                        >
+                          View document
+                        </a>
+                      ) : null}
+                      {!badge.is_verified ? (
+                        <GhostBtn onClick={() => openCustomReplace(badge)}>
+                          Replace document
+                        </GhostBtn>
+                      ) : null}
+                    </>
+                  }
+                />
+              ))}
+
+              <button
+                type="button"
+                onClick={() => openUploadModal('custom_licence', 'custom')}
+                className="group flex w-full flex-col gap-5 rounded-[24px] border-2 border-dashed border-primary/25 bg-blue-50/30 p-5 text-left transition hover:border-primary/50 sm:flex-row sm:items-center sm:gap-8 sm:p-6"
+              >
+                <div className="rounded-2xl bg-white p-4 text-primary shadow-sm transition group-hover:scale-105">
+                  <Plus className="h-8 w-8" />
+                </div>
+                <div className="min-w-0 flex-1 space-y-2">
+                  <h3 className={cn(landingHeadline, 'text-lg text-[#000d45]')}>
+                    Add custom licence badge
+                  </h3>
+                  <p className={cn(landingBodyMuted, 'text-sm leading-relaxed')}>
+                    Upload any trade licence or certification not listed above — HVAC, gas fitting,
+                    builder, arborist, and more.
+                  </p>
+                </div>
+                <span
+                  className={cn(
+                    landingBody,
+                    'inline-flex min-h-[48px] shrink-0 items-center justify-center rounded-2xl bg-[#1161fe] px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-primary/25',
+                  )}
+                >
+                  Upload
+                </span>
+              </button>
+            </div>
+          </section>
         </div>
-      </section>
+      </div>
 
       {submitting ? (
-        <p className="text-center text-xs font-bold text-gray-400 uppercase tracking-widest">
+        <p
+          className={cn(
+            landingBodyMuted,
+            'flex items-center justify-center gap-2 text-center text-sm',
+          )}
+          role="status"
+        >
+          <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden />
           Submitting {submitting.replace(/_/g, ' ')}…
         </p>
       ) : null}
@@ -579,26 +864,6 @@ export default function Badges() {
         onSubmit={handleUploadSubmit}
         submitting={submitting !== null}
       />
-
-      <footer className="pt-12 border-t border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-orange-50 text-orange-600 rounded-2xl">
-            <Lock className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-sm font-black text-blue-950 uppercase">Your Privacy Matters</p>
-            <p className="text-xs text-gray-500 font-medium">
-              All data is encrypted and handled by verified third parties.
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          className="border-2 border-blue-950 text-blue-950 px-8 py-3 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-blue-950 hover:text-white transition-all"
-        >
-          View Trust Center
-        </button>
-      </footer>
     </motion.div>
   );
 }

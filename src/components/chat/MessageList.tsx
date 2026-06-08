@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { Check, CheckCheck, Loader2 } from 'lucide-react';
 import { Message } from '@/types';
+import UserAvatar from '@/components/common/UserAvatar';
 
 interface MessageListProps {
   messages: Message[];
@@ -66,10 +67,11 @@ export default function MessageList({ messages, currentUserId, isLoading }: Mess
                 <div className={`flex items-end space-x-2 max-w-[70%] ${isOwnMessage ? 'flex-row-reverse space-x-reverse' : ''}`}>
                   {/* Avatar */}
                   {!isOwnMessage && (
-                    <img
-                      src={message.sender.profile_image || '/images/default-avatar.png'}
-                      alt={message.sender.full_name}
-                      className="w-8 h-8 rounded-full"
+                    <UserAvatar
+                      src={message.sender.profile_image}
+                      name={message.sender.full_name}
+                      size="sm"
+                      verified={message.sender.is_verified_tasker}
                     />
                   )}
 

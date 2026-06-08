@@ -4,7 +4,7 @@ import Link from "next/link";
 import { BadgeCheck, CheckCircle, Headset, Lock } from "lucide-react";
 import { IMAGES } from "../constants";
 import { motion } from "motion/react";
-import { landingHeadline, landingHeadlineSm } from "./landingTypography";
+import { landingBody, landingBodyMuted, landingHeadline, landingHeadlineSm } from "./landingTypography";
 
 const FEATURES = [
   {
@@ -26,7 +26,7 @@ const FEATURES = [
 
 export default function TrustSecurity() {
   return (
-    <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-20 lg:px-8 lg:py-28">
+    <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
       <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14 xl:gap-20">
         <motion.div
           initial={{ opacity: 0, x: -30 }}
@@ -59,7 +59,7 @@ export default function TrustSecurity() {
               <p className={`${landingHeadlineSm} text-base leading-tight text-[#061257] sm:text-2xl`}>
                 100% Verified
               </p>
-              <p className="text-[11px] font-medium text-[#6a719a] mt-1">
+              <p className={`${landingBodyMuted} mt-1 text-[11px]`}>
                 Trust & Safety first
               </p>
             </div>
@@ -69,14 +69,14 @@ export default function TrustSecurity() {
           <div className="absolute -top-10 -left-10 w-56 h-56 bg-primary/10 rounded-full blur-3xl -z-10" />
         </motion.div>
 
-        <div className="space-y-8 sm:space-y-12">
+        <div className="space-y-6 sm:space-y-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <span className="text-[11px] font-semibold uppercase tracking-widest text-primary mb-3 block">
+            <span className={`${landingHeadlineSm} mb-3 block text-[11px] uppercase tracking-widest text-primary`}>
               Trust & safety
             </span>
             <h2
@@ -85,7 +85,7 @@ export default function TrustSecurity() {
               Trust and safety features <br className="hidden sm:block" />
               <span className="text-[#384179]">for your protection</span>
             </h2>
-            <p className="mt-3 text-[13px] sm:text-sm leading-relaxed text-[#6a719a] max-w-xl">
+            <p className={`${landingBodyMuted} mt-3 max-w-xl text-[13px] leading-relaxed sm:text-sm`}>
               Payments are protected, profiles are verified, and support is always available—so you can post with confidence.
             </p>
           </motion.div>
@@ -108,7 +108,7 @@ export default function TrustSecurity() {
                     <h4 className={`${landingHeadlineSm} text-lg sm:text-xl text-[#061257]`}>
                       {item.title}
                     </h4>
-                    <p className="mt-1 text-[13px] sm:text-sm leading-relaxed text-[#6a719a] max-w-xl font-medium">
+                    <p className={`${landingBodyMuted} mt-1 max-w-xl text-[13px] leading-relaxed sm:text-sm`}>
                       {item.desc}
                     </p>
                   </div>
@@ -125,7 +125,7 @@ export default function TrustSecurity() {
           >
             <Link
               href="/cancellation-policy"
-              className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-[#061257] px-7 py-3 text-sm font-semibold text-white shadow-md transition-colors duration-200 hover:bg-primary active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:w-auto sm:text-sm"
+              className={`${landingBody} inline-flex min-h-11 w-full items-center justify-center rounded-full bg-[#061257] px-7 py-3 text-sm font-semibold text-white shadow-md transition-colors duration-200 hover:bg-primary active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:w-auto sm:text-sm`}
             >
               Learn about safety
             </Link>

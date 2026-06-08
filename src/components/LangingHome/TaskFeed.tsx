@@ -12,7 +12,7 @@ import {
   mapTasksFromResponse,
   type LandingTaskCard,
 } from "@/lib/landingHome";
-import { landingHeadline, landingHeadlineSm } from "./landingTypography";
+import { landingBody, landingHeadline, landingHeadlineSm } from "./landingTypography";
 
 export default function TaskFeed() {
   const [tasks, setTasks] = useState<LandingTaskCard[]>([]);
@@ -65,14 +65,14 @@ export default function TaskFeed() {
   const row2 = [...marqueeSource.slice(4, 8), ...marqueeSource.slice(4, 8)];
 
   return (
-    <section className="overflow-x-hidden bg-white py-12 sm:py-16 md:py-20">
-      <div className="mx-auto mb-10 max-w-7xl px-4 text-center sm:mb-16 sm:px-6 lg:px-8">
-        <h2 className={`${landingHeadline} mb-4 text-2xl text-[#0b1442] text-balance sm:mb-6 sm:text-4xl md:text-5xl lg:text-6xl`}>
+    <section className="overflow-x-hidden bg-white py-8 sm:py-10 md:py-12">
+      <div className="mx-auto mb-6 max-w-7xl px-4 text-center sm:mb-8 sm:px-6 lg:px-8">
+        <h2 className={`${landingHeadline} mb-3 text-2xl text-[#0b1442] text-balance sm:mb-4 sm:text-4xl md:text-5xl lg:text-6xl`}>
           See what others are getting done
         </h2>
         <Link
           href={browseTasksHref(activeCategory ?? undefined)}
-          className="mb-6 inline-block text-sm font-semibold text-[#1161fe] hover:underline sm:mb-10"
+          className={`${landingBody} mb-4 inline-block text-sm font-semibold text-[#1161fe] hover:underline sm:mb-6`}
         >
           Browse all open tasks →
         </Link>
@@ -82,7 +82,7 @@ export default function TaskFeed() {
             <button
               type="button"
               onClick={() => setActiveCategory(null)}
-              className={`relative shrink-0 pb-3 text-sm font-bold transition-colors ${
+              className={`${landingBody} relative shrink-0 pb-3 text-sm font-bold transition-colors ${
                 activeCategory === null ? "text-[#0b1442]" : "text-[#384179] hover:text-[#1161fe]"
               }`}
             >
@@ -98,7 +98,7 @@ export default function TaskFeed() {
                   key={cat}
                   type="button"
                   onClick={() => setActiveCategory(cat)}
-                  className={`relative shrink-0 pb-3 text-sm font-bold transition-colors ${
+                  className={`${landingBody} relative shrink-0 pb-3 text-sm font-bold transition-colors ${
                     active ? "text-[#0b1442]" : "text-[#384179] hover:text-[#1161fe]"
                   }`}
                 >
@@ -113,7 +113,7 @@ export default function TaskFeed() {
         </div>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-4">
         <MarqueeRow items={row1} direction="left" speed={90} />
         <MarqueeRow items={row2.length ? row2 : row1} direction="right" speed={100} />
       </div>
@@ -170,7 +170,7 @@ function TaskCard({ task }: { task: LandingTaskCard }) {
       <div>
         <div className="flex justify-between items-start mb-4">
           <div className="space-y-1 min-w-0 pr-2">
-            <span className="text-[10px] font-semibold tracking-widest text-[#384179] opacity-70 uppercase">
+            <span className={`${landingHeadlineSm} text-[10px] tracking-widest text-[#384179] uppercase opacity-70`}>
               {task.category}
             </span>
             <h3
@@ -190,7 +190,7 @@ function TaskCard({ task }: { task: LandingTaskCard }) {
       <div className="flex justify-between items-end">
         <div className="bg-white px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm border border-gray-100">
           <Star size={14} className="text-orange-500 fill-orange-500" />
-          <span className="text-xs font-semibold text-[#0b1442]">
+          <span className={`${landingBody} text-xs font-semibold text-[#0b1442]`}>
             {task.rating > 0 ? `${task.rating} Stars` : "New"}
           </span>
         </div>

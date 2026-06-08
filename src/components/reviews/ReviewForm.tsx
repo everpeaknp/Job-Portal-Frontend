@@ -6,12 +6,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Star, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import UserAvatar from '@/components/common/UserAvatar';
 
 interface ReviewFormProps {
   taskId: number;
   revieweeId: number;
   revieweeName: string;
   revieweeImage?: string;
+  revieweeVerified?: boolean;
   onSubmit: (reviewData: ReviewData) => Promise<void>;
   onCancel: () => void;
 }
@@ -30,6 +32,7 @@ export default function ReviewForm({
   revieweeId,
   revieweeName,
   revieweeImage,
+  revieweeVerified = false,
   onSubmit,
   onCancel,
 }: ReviewFormProps) {
@@ -114,10 +117,11 @@ export default function ReviewForm({
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Reviewee Info */}
         <div className="flex items-center space-x-4 pb-4 border-b">
-          <img
-            src={revieweeImage || '/images/default-avatar.png'}
-            alt={revieweeName}
-            className="w-16 h-16 rounded-full"
+          <UserAvatar
+            src={revieweeImage}
+            name={revieweeName}
+            size="xl"
+            verified={revieweeVerified}
           />
           <div>
             <h3 className="text-lg font-semibold">Review {revieweeName}</h3>

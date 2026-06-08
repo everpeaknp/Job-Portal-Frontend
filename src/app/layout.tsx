@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Manrope } from "next/font/google";
+import { Geist, Geist_Mono, Manrope, Outfit } from "next/font/google";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/providers";
 import MobileBottomNav from "@/components/common/MobileBottomNav";
@@ -21,6 +21,13 @@ const manrope = Manrope({
   weight: ["400", "500", "600", "700", "800"],
 });
 
+/** Display headlines (discover / marketing). Falls back when PP Formula files are absent. */
+const outfit = Outfit({
+  variable: "--font-outfit",
+  subsets: ["latin"],
+  weight: ["700", "800", "900"],
+});
+
 export const metadata: Metadata = {
   title: "tasknepal - Get Things Done",
   description: "Connect with skilled taskers to get your tasks done quickly and efficiently",
@@ -28,17 +35,20 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
+  modal,
 }: Readonly<{
   children: React.ReactNode;
+  modal: React.ReactNode;
 }>) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable} ${outfit.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <AuthProvider>
           {children}
+          {modal}
           <MobileBottomNav />
           <Toaster position="top-right" richColors />
         </AuthProvider>

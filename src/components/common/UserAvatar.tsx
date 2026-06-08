@@ -1,5 +1,5 @@
 import React from 'react';
-import { User as UserIcon } from 'lucide-react';
+import { BadgeCheck, User as UserIcon } from 'lucide-react';
 import { getMediaUrl } from '@/lib/utils';
 
 interface UserAvatarProps {
@@ -7,6 +7,7 @@ interface UserAvatarProps {
   alt?: string;
   name?: string;
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  verified?: boolean;
   className?: string;
 }
 
@@ -26,11 +27,40 @@ const iconSizes = {
   xl: 'w-8 h-8',
 };
 
+const badgeSizeClasses = {
+  xs: 'h-3 w-3',
+  sm: 'h-3.5 w-3.5',
+  md: 'h-4 w-4',
+  lg: 'h-5 w-5',
+  xl: 'h-6 w-6',
+};
+
+const badgeIconSizes = {
+  xs: 'h-2 w-2',
+  sm: 'h-2.5 w-2.5',
+  md: 'h-2.5 w-2.5',
+  lg: 'h-3 w-3',
+  xl: 'h-3.5 w-3.5',
+};
+
+/**
+ * Reserve ~50% of badge size on bottom/right so the full circle stays inside
+ * the layout box (absolute badges do not expand parents; undersized padding clips).
+ */
+const verifiedPaddingClasses = {
+  xs: 'pb-1 pr-1',
+  sm: 'pb-1.5 pr-1.5',
+  md: 'pb-2 pr-2',
+  lg: 'pb-2.5 pr-2.5',
+  xl: 'pb-3 pr-3',
+};
+
 export default function UserAvatar({
   src,
   alt = 'User',
   name,
   size = 'md',
+  verified = false,
   className = '',
 }: UserAvatarProps) {
   const [imageError, setImageError] = React.useState(false);
@@ -64,21 +94,36 @@ export default function UserAvatar({
 
   return (
     <div
-      className={`${sizeClasses[size]} rounded-full overflow-hidden flex items-center justify-center bg-gradient-to-br from-primary/80 to-primary shrink-0 relative ${className}`}
+      className={`relative inline-flex shrink-0 overflow-visible ${
+        verified ? verifiedPaddingClasses[size] : ''
+      }`}
     >
-      {canShowImage ? (
-        <img
-          ref={imgRef}
-          src={imageSrc}
-          alt={alt}
-          onError={() => setImageError(true)}
-          className="w-full h-full object-cover"
-        />
-      ) : initials ? (
-        <span className="font-bold text-white">{initials}</span>
-      ) : (
-        <UserIcon className={`${iconSizes[size]} text-white`} />
-      )}
+      <div
+        className={`${sizeClasses[size]} rounded-full overflow-hidden flex items-center justify-center bg-gradient-to-br from-primary/80 to-primary ${className}`}
+      >
+        {canShowImage ? (
+          <img
+            ref={imgRef}
+            src={imageSrc}
+            alt={alt}
+            onError={() => setImageError(true)}
+            className="w-full h-full object-cover"
+          />
+        ) : initials ? (
+          <span className="font-bold text-white">{initials}</span>
+        ) : (
+          <UserIcon className={`${iconSizes[size]} text-white`} />
+        )}
+      </div>
+      {verified ? (
+        <span
+          className={`absolute bottom-0 right-0 z-10 flex ${badgeSizeClasses[size]} items-center justify-center rounded-full bg-emerald-500 ring-2 ring-white shadow-sm`}
+          title="Verified tasker"
+          aria-label="Verified tasker"
+        >
+          <BadgeCheck className={`${badgeIconSizes[size]} shrink-0 text-white`} strokeWidth={2.5} />
+        </span>
+      ) : null}
     </div>
   );
 }

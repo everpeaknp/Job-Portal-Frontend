@@ -35,7 +35,7 @@ export function taskCreatedAtMs(task: Task): number {
   return Number.isFinite(ms) ? ms : 0;
 }
 
-function haversineKm(
+export function haversineKm(
   lat1: number,
   lon1: number,
   lat2: number,

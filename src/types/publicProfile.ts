@@ -48,6 +48,7 @@ export interface PublicProfileReview {
     last_name?: string;
     full_name?: string;
     profile_image?: string;
+    is_verified_tasker?: boolean;
   };
   created_at?: string;
 }

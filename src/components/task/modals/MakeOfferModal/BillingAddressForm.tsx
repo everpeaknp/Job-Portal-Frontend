@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ChevronLeft, Loader2, Navigation } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 import {
   DEFAULT_COUNTRY,
   NEPAL_PROVINCES,

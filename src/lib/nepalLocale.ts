@@ -46,6 +46,15 @@ export function formatBudgetRange(min: number, max: number): string {
   return `${formatNPR(min)} – ${formatNPR(max)}`;
 }
 
+/** Replace legacy USD-style $ amounts in notification copy with NPR formatting. */
+export function normalizeNotificationCurrency(text: string): string {
+  if (!text) return text;
+  return text.replace(
+    /\$(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)/g,
+    (_, amount: string) => formatNPR(amount.replace(/,/g, ''), { showCode: true }),
+  );
+}
+
 export const BUDGET_VALIDATION_MESSAGE = `Budget must be between ${formatNPR(BUDGET_MIN_NPR)} and ${formatNPR(BUDGET_MAX_NPR)}`;
 
 type TaskLocationFields = {

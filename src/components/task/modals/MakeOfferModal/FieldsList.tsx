@@ -1,6 +1,7 @@
 import { Calendar, Phone, CreditCard, MapPinIcon, Check, Plus } from 'lucide-react';
 import { User } from '@/types';
 import { formatBillingAddressSummary } from '@/lib/nepalLocale';
+import UserAvatar from '@/components/common/UserAvatar';
 
 interface FieldsListProps {
   user: User | null;
@@ -28,19 +29,12 @@ export default function FieldsList({
         onClick={() => onFieldClick('profile')}
         className="flex items-center gap-5 py-6 cursor-pointer hover:bg-surface-dim/20 -mx-10 px-10 transition-all"
       >
-        <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 bg-surface-dim">
-          {user?.profile_image ? (
-            <img 
-              src={user.profile_image} 
-              alt="Profile" 
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-on-surface-variant font-bold text-xl">
-              {user?.first_name?.charAt(0) || 'U'}
-            </div>
-          )}
-        </div>
+        <UserAvatar
+          src={user?.profile_image}
+          name={user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : 'User'}
+          size="lg"
+          verified={user?.is_verified_tasker}
+        />
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-[#000d45]">Profile picture</h3>
         </div>

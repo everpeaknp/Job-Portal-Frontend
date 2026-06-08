@@ -3,10 +3,13 @@
 import { X } from 'lucide-react';
 import UserAvatar from '@/components/common/UserAvatar';
 import { formatNPR } from '@/lib/nepalLocale';
+import { useRoadDistanceLabel } from '@/hooks/useRoadDistanceLabel';
+import { KATHMANDU_CENTER } from '@/lib/userGeolocation';
 import type { Task } from './types';
 
 interface TaskMapPreviewProps {
   task: Task;
+  userCenter?: [number, number] | null;
   onClose: () => void;
   onViewTask: () => void;
 }
@@ -19,7 +22,18 @@ function hoursSincePosted(postedDate: Date): number {
   return Math.max(1, Math.round((Date.now() - postedDate.getTime()) / (1000 * 60 * 60)));
 }
 
-export default function TaskMapPreview({ task, onClose, onViewTask }: TaskMapPreviewProps) {
+export default function TaskMapPreview({
+  task,
+  userCenter,
+  onClose,
+  onViewTask,
+}: TaskMapPreviewProps) {
+  const origin = userCenter ?? ([KATHMANDU_CENTER.lat, KATHMANDU_CENTER.lng] as [number, number]);
+  const { label: roadDistanceLabel, loading: isDistanceLoading } = useRoadDistanceLabel(
+    origin,
+    task.coordinates
+  );
+
   return (
     <div
       className="absolute inset-0 z-[40] flex items-end justify-center p-3 pb-[7.5rem] pointer-events-none sm:items-center sm:p-6 sm:pb-6"
@@ -51,6 +65,7 @@ export default function TaskMapPreview({ task, onClose, onViewTask }: TaskMapPre
               alt={task.user.name}
               name={task.user.name}
               size="xl"
+              verified={task.user.verified}
               className="w-20 h-20 sm:w-24 sm:h-24 !rounded-2xl shrink-0"
             />
             <div
@@ -73,9 +88,18 @@ export default function TaskMapPreview({ task, onClose, onViewTask }: TaskMapPre
             >
               {task.title}
             </h4>
-            <p className="text-on-surface-variant text-sm font-medium break-words [overflow-wrap:anywhere]">
-              Due in {daysUntilDue(task.dueDate)} days
-            </p>
+            <div className="flex items-center justify-between gap-3 text-on-surface-variant text-sm font-medium">
+              <span className="min-w-0 break-words [overflow-wrap:anywhere]">
+                Due in {daysUntilDue(task.dueDate)} days
+              </span>
+              {roadDistanceLabel ? (
+                <span className="shrink-0 text-right whitespace-nowrap">{roadDistanceLabel}</span>
+              ) : isDistanceLoading ? (
+                <span className="shrink-0 text-right whitespace-nowrap text-on-surface-variant/60">
+                  …
+                </span>
+              ) : null}
+            </div>
             <p className="text-on-surface-variant text-sm break-words [overflow-wrap:anywhere]">
               Posted by{' '}
               <span className="text-primary font-bold break-words [overflow-wrap:anywhere]">

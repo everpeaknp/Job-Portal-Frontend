@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuthStore } from '@/store/auth.store';
 import { userService, paymentService } from '@/services';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 import { notifyUserProfileUpdated, normalizeUserFromApi } from '@/lib/userProfileSync';
 import { User } from '@/types';
 import ModalHeader from './ModalHeader';

@@ -13,6 +13,7 @@ import {
   type SearchTaskerResult,
 } from '@/services/search.service';
 import { formatNPR } from '@/lib/nepalLocale';
+import { formatTaskDisplayTitle } from '@/lib/taskUtils';
 
 type Tab = 'tasks' | 'taskers';
 
@@ -133,7 +134,9 @@ function SearchResultsContent() {
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <h2 className="font-bold text-[#0a1452]">{task.title}</h2>
+                        <h2 className="font-bold text-[#0a1452]">
+                          {formatTaskDisplayTitle(task.title)}
+                        </h2>
                         {task.category_name && (
                           <p className="mt-1 text-xs font-medium text-gray-400">{task.category_name}</p>
                         )}
@@ -166,7 +169,11 @@ function SearchResultsContent() {
                       href={`/users/${tasker.id}`}
                       className="flex items-center gap-4 rounded-2xl bg-white p-5 transition hover:shadow-md"
                     >
-                      <UserAvatar name={name} size="md" />
+                      <UserAvatar
+                        name={name}
+                        size="md"
+                        verified={tasker.is_verified_tasker}
+                      />
                       <div className="min-w-0 flex-1">
                         <p className="font-bold text-[#0a1452]">{name}</p>
                         {tasker.tagline && (

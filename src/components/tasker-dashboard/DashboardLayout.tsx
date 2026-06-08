@@ -34,7 +34,7 @@ function DashboardLayoutShell({ children }: { children: React.ReactNode }) {
   }, [mobileOpen]);
 
   return (
-    <div className="mobile-bottom-nav-offset min-h-[100dvh] bg-white font-sans md:pb-0">
+    <div className="mobile-bottom-nav-offset min-h-[100dvh] bg-white font-body md:pb-0">
       <Navbar />
       <Sidebar mobileOpen={mobileOpen} onMobileOpenChange={setMobileOpen} />
 

@@ -1,5 +1,7 @@
 "use client";
 import React from 'react';
+import { Check } from 'lucide-react';
+import { landingHeadlineSm } from '@/components/LangingHome/landingTypography';
 
 export type StepId = 'title-date' | 'location' | 'details' | 'budget';
 
@@ -9,7 +11,7 @@ export interface Step {
 }
 
 export const STEPS: Step[] = [
-  { id: 'title-date', label: 'Title & Date' },
+  { id: 'title-date', label: 'Title & date' },
   { id: 'location', label: 'Location' },
   { id: 'details', label: 'Details' },
   { id: 'budget', label: 'Budget' },
@@ -24,12 +26,12 @@ export const MobileStepProgress: React.FC<SidebarProps> = ({ activeStep }) => {
   const current = STEPS[currentIndex];
 
   return (
-    <div className="shrink-0 border-b border-outline-variant/60 bg-white px-4 py-3 lg:hidden">
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
+    <div className="shrink-0 bg-white py-3 lg:hidden">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className={`${landingHeadlineSm} text-xs uppercase tracking-wide text-[#6a719a]`}>
           Post a task
         </p>
-        <p className="text-xs font-semibold text-gray-400">
+        <p className="font-body text-xs font-semibold text-[#6a719a]">
           {currentIndex + 1} / {STEPS.length}
         </p>
       </div>
@@ -37,14 +39,18 @@ export const MobileStepProgress: React.FC<SidebarProps> = ({ activeStep }) => {
         {STEPS.map((step, index) => (
           <div
             key={step.id}
-            className={`h-1 flex-1 rounded-full transition-colors ${
-              index <= currentIndex ? 'bg-[#0066ff]' : 'bg-gray-200'
+            className={`h-1.5 flex-1 rounded-full transition-colors ${
+              index <= currentIndex
+                ? 'bg-gradient-to-r from-[#000d45] to-[#1161fe]'
+                : 'bg-[#e8ecf4]'
             }`}
           />
         ))}
       </div>
       {current && (
-        <p className="mt-2 truncate text-sm font-bold text-[#0066ff]">{current.label}</p>
+        <p className={`${landingHeadlineSm} mt-2 truncate text-sm text-primary`}>
+          {current.label}
+        </p>
       )}
     </div>
   );
@@ -54,9 +60,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeStep }) => {
   const activeIndex = STEPS.findIndex((s) => s.id === activeStep);
 
   return (
-    <aside className="hidden w-56 shrink-0 border-r border-gray-100 bg-gray-50/50 lg:block xl:w-64">
-      <div className="sticky top-0 px-5 py-8 xl:px-6 xl:py-10">
-        <h2 className="mb-8 text-[17px] font-bold text-gray-800 xl:mb-10">Post a task</h2>
+    <aside className="hidden w-44 shrink-0 bg-white lg:block xl:w-48">
+      <div className="sticky top-0 py-6 xl:py-8">
+        <h2 className={`${landingHeadlineSm} mb-5 text-base text-[#000d45] xl:mb-6 xl:text-lg`}>
+          Post a task
+        </h2>
         <nav className="flex flex-col gap-1" aria-label="Post task steps">
           {STEPS.map((step, index) => {
             const isActive = step.id === activeStep;
@@ -64,30 +72,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeStep }) => {
             return (
               <div
                 key={step.id}
-                className={`relative flex items-center gap-3 rounded-xl px-3 py-3 transition-colors xl:px-4 xl:py-3.5 ${
+                className={`flex items-center gap-2 rounded-xl px-2 py-2 transition-all ${
                   isActive
-                    ? 'bg-white font-bold text-[#0066ff] shadow-sm'
+                    ? 'font-semibold text-primary'
                     : isComplete
-                      ? 'font-semibold text-gray-600'
-                      : 'font-medium text-gray-400'
+                      ? 'font-medium text-[#000d45]'
+                      : 'font-medium text-[#8a96b0]'
                 }`}
                 aria-current={isActive ? 'step' : undefined}
               >
-                {isActive && (
-                  <div className="absolute left-0 top-1/2 h-7 w-1 -translate-y-1/2 rounded-r-full bg-[#0066ff]" />
-                )}
                 <span
-                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold ${
                     isActive
-                      ? 'bg-[#0066ff] text-white'
+                      ? 'bg-primary text-white'
                       : isComplete
-                        ? 'bg-[#0066ff]/15 text-[#0066ff]'
-                        : 'bg-gray-200 text-gray-500'
+                        ? 'bg-emerald-50 text-emerald-600'
+                        : 'bg-[#eef2fa] text-[#8a96b0]'
                   }`}
                 >
-                  {index + 1}
+                  {isComplete ? <Check className="h-3 w-3 stroke-[3]" /> : index + 1}
                 </span>
-                <span className="text-[15px] leading-tight">{step.label}</span>
+                <span className="font-body text-xs leading-tight xl:text-[13px]">{step.label}</span>
               </div>
             );
           })}

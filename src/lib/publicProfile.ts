@@ -59,6 +59,44 @@ export function normalizePublicReview(review: Review): PublicProfileReview {
   };
 }
 
+/** Strip verbose geocoder suffixes, e.g. "Kathmandu Metropolitan City" → "Kathmandu". */
+export function normalizeCityLabel(value: string): string {
+  return value
+    .trim()
+    .replace(/\s+sub-metropolitan city$/i, '')
+    .replace(/\s+metropolitan city$/i, '')
+    .replace(/\s+municipality$/i, '')
+    .trim();
+}
+
+export function formatShortLocation(input: {
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  location_display?: string | null;
+} | null | undefined): string {
+  if (!input) return '';
+
+  const city = input.city?.trim();
+  if (city) {
+    return normalizeCityLabel(city);
+  }
+
+  const raw = input.location_display?.trim();
+  if (!raw) return '';
+
+  const singleLine = raw.split('\n')[0]?.trim() ?? '';
+  const firstSegment = singleLine.split(',')[0]?.trim() ?? '';
+  if (firstSegment) {
+    return normalizeCityLabel(firstSegment);
+  }
+
+  if (singleLine.length > 40) {
+    return `${singleLine.slice(0, 37).trim()}…`;
+  }
+  return singleLine;
+}
+
 export function formatProfileRating(value: number | string | undefined): string {
   const num = Number(value ?? 0);
   if (!Number.isFinite(num) || num <= 0) return '—';

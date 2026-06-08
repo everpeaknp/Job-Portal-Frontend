@@ -22,6 +22,7 @@ interface TaskCardProps {
     name: string;
     avatar: string;
     rating?: number;
+    verified?: boolean;
   };
   onClick?: () => void;
   onEdit?: () => void;
@@ -49,17 +50,17 @@ function formatDueDateLabel(dueDate?: string | Date | null): string {
 function statusTextClass(status: string): string {
   switch (status) {
     case 'open':
-      return 'text-primary';
+      return 'text-white';
     case 'assigned':
     case 'in_progress':
-      return 'text-blue-600';
+      return 'text-blue-100';
     case 'completed':
-      return 'text-purple-600';
+      return 'text-purple-200';
     case 'cancelled':
     case 'disputed':
-      return 'text-error';
+      return 'text-red-200';
     default:
-      return 'text-on-surface-variant';
+      return 'text-white/90';
   }
 }
 
@@ -84,8 +85,8 @@ export default function TaskCard({
   const hasActions = Boolean(onEdit || onDelete);
 
   const cardSurfaceClass = isActive
-    ? 'bg-[#f1f4f9] border-primary/50'
-    : 'bg-white border-outline-variant hover:bg-[#f1f4f9] hover:border-primary/40 active:bg-[#f1f4f9] active:border-primary/50';
+    ? 'ring-2 ring-white/40'
+    : 'hover:brightness-105 active:brightness-95';
 
   return (
     <div
@@ -102,11 +103,20 @@ export default function TaskCard({
             }
           : undefined
       }
-      className={`rounded-2xl border p-4 sm:p-5 transition-colors group cursor-pointer relative flex flex-col min-w-0 w-full ${cardSurfaceClass} ${className}`.trim()}
+      className={`relative flex min-w-0 w-full cursor-pointer flex-col rounded-2xl bg-gradient-to-br from-[#000d45] via-[#0c2860] to-[#1161fe] p-4 text-white shadow-lg transition-all group sm:p-5 ${cardSurfaceClass} ${className}`.trim()}
     >
+      <div
+        className="pointer-events-none absolute inset-0 opacity-30"
+        aria-hidden
+        style={{
+          backgroundImage:
+            'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.15) 0%, transparent 45%), radial-gradient(circle at 80% 80%, rgba(255,255,255,0.08) 0%, transparent 40%)',
+        }}
+      />
+      <div className="relative flex flex-1 flex-col">
       {/* Title + actions + price */}
       <div className="flex items-start justify-between gap-3 mb-4">
-        <h3 className="flex-1 min-w-0 font-sans text-base sm:text-[17px] font-bold leading-snug text-[#000d45] line-clamp-2 break-words [overflow-wrap:anywhere] group-hover:text-primary transition-colors">
+        <h3 className="flex-1 min-w-0 font-sans text-base sm:text-[17px] font-bold leading-snug text-white line-clamp-2 break-words [overflow-wrap:anywhere] group-hover:text-white/90 transition-colors">
           {title}
         </h3>
         <div className="flex items-center gap-1 shrink-0">
@@ -119,7 +129,7 @@ export default function TaskCard({
                     e.stopPropagation();
                     onEdit();
                   }}
-                  className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-[#f1f4f9] transition-colors"
+                  className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/15 transition-colors"
                   title="Edit task"
                   aria-label="Edit task"
                 >
@@ -133,7 +143,7 @@ export default function TaskCard({
                     e.stopPropagation();
                     onDelete();
                   }}
-                  className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-[#f1f4f9] transition-colors"
+                  className="p-1.5 rounded-lg text-white/80 hover:text-red-200 hover:bg-white/15 transition-colors"
                   title="Delete task"
                   aria-label="Delete task"
                 >
@@ -142,7 +152,7 @@ export default function TaskCard({
               )}
             </div>
           )}
-          <p className="font-sans text-base sm:text-lg font-bold text-[#000d45] leading-snug">
+          <p className="font-sans text-base sm:text-lg font-bold text-white leading-snug">
             {formatNPR(price)}
           </p>
         </div>
@@ -150,22 +160,22 @@ export default function TaskCard({
 
       {/* Location, date, time */}
       <div className="flex flex-col gap-2 sm:gap-2.5 mb-4 min-w-0">
-        <div className="flex items-center gap-2 min-w-0 text-on-surface-variant">
+        <div className="flex items-center gap-2 min-w-0 text-white/85">
           <MapPin className="w-4 h-4 shrink-0 stroke-[1.5]" aria-hidden />
           <span className="font-sans text-sm leading-5 truncate">{location}</span>
         </div>
-        <div className="flex items-center gap-2 text-on-surface-variant">
+        <div className="flex items-center gap-2 text-white/85">
           <Calendar className="w-4 h-4 shrink-0 stroke-[1.5]" aria-hidden />
           <span className="font-sans text-sm leading-5">{dateLabel}</span>
         </div>
-        <div className="flex items-center gap-2 text-on-surface-variant">
+        <div className="flex items-center gap-2 text-white/85">
           <Clock className="w-4 h-4 shrink-0 stroke-[1.5]" aria-hidden />
           <span className="font-sans text-sm leading-5">{timeLabel}</span>
         </div>
       </div>
 
       {/* Status, offers, avatar */}
-      <div className="flex items-center justify-between gap-3 min-w-0 pt-2">
+      <div className="mt-auto flex items-center justify-between gap-3 min-w-0 overflow-visible pt-2 pr-0.5 pb-0.5">
         <div className="min-w-0 flex flex-col gap-0.5">
           <span
             className={`font-sans text-sm sm:text-[15px] font-bold leading-5 ${statusTextClass(status)}`}
@@ -173,7 +183,7 @@ export default function TaskCard({
             {displayStatus}
           </span>
           {offerCount > 0 && (
-            <span className="font-sans text-xs text-on-surface-variant leading-4">
+            <span className="font-sans text-xs text-white/75 leading-4">
               {offerCount} {offerCount === 1 ? 'offer' : 'offers'}
             </span>
           )}
@@ -183,8 +193,10 @@ export default function TaskCard({
           alt={user.name}
           name={user.name}
           size="md"
+          verified={user.verified}
           className="shrink-0"
         />
+      </div>
       </div>
     </div>
   );

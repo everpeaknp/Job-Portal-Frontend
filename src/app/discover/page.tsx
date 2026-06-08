@@ -1,6 +1,7 @@
 'use client';
 
 import '@/components/LangingHome/landing-home.css';
+import { landingPageRoot, landingPageTypo } from '@/components/LangingHome/landingTypography';
 import { useRouter } from 'next/navigation';
 import Hero from '@/components/discover/Hero';
 import CategoryCarousel from '@/components/discover/CategoryCarousel';
@@ -13,7 +14,9 @@ export default function DiscoverPage() {
   const router = useRouter();
 
   return (
-    <div className="mobile-bottom-nav-offset min-h-screen overflow-x-hidden bg-white font-body selection:bg-[#1161fe] selection:text-white">
+    <div
+      className={`${landingPageRoot} ${landingPageTypo} mobile-bottom-nav-offset min-h-screen overflow-x-hidden bg-white selection:bg-[#1161fe] selection:text-white`}
+    >
       <Navbar />
       <main className="pb-2 md:pb-0">
         <Hero

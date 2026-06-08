@@ -25,7 +25,7 @@ import {
 import { taskService } from "@/services/task.service";
 import { browseTasksHref, postTaskHref, topCategoryNames } from "@/lib/landingHome";
 import type { Category } from "@/types";
-import { landingHeadline } from "./landingTypography";
+import { landingBody, landingBodyMuted, landingHeadline, landingHeadlineSm } from "./landingTypography";
 
 const ICON_BY_NAME: Record<string, ReactNode> = {
   cleaning: <Sparkles size={28} />,
@@ -123,7 +123,7 @@ export default function ServiceFeatures() {
   }, [carouselControls, carouselItems.length]);
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+    <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
       <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-20">
         <div>
           <h2
@@ -138,7 +138,7 @@ export default function ServiceFeatures() {
                 <div className="mt-0.5 shrink-0 rounded-full bg-[#1161fe]/10 p-1 text-[#1161fe] sm:mt-1">
                   <CheckCircle2 size={20} />
                 </div>
-                <p className="text-base font-medium leading-relaxed text-[#6a719a] sm:text-lg">{text}</p>
+                <p className={`${landingBodyMuted} text-base leading-relaxed sm:text-lg`}>{text}</p>
               </div>
             ))}
           </div>
@@ -148,7 +148,7 @@ export default function ServiceFeatures() {
               <motion.span
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="flex min-h-12 w-full cursor-pointer items-center justify-center rounded-full bg-[#1161fe] px-8 py-4 text-base font-semibold text-white shadow-xl shadow-[#1161fe]/25 transition-all hover:bg-blue-600 sm:inline-flex sm:px-10 sm:py-5 sm:text-lg"
+                className={`${landingBody} flex min-h-12 w-full cursor-pointer items-center justify-center rounded-full bg-[#1161fe] px-8 py-4 text-base font-semibold text-white shadow-xl shadow-[#1161fe]/25 transition-all hover:bg-blue-600 sm:inline-flex sm:px-10 sm:py-5 sm:text-lg`}
               >
                 Post your task
               </motion.span>
@@ -183,7 +183,7 @@ export default function ServiceFeatures() {
                 <div className="text-gray-400 group-hover/card:text-white transition-colors">
                   {cat.name === "More" ? <Plus size={28} /> : iconForCategory(cat.name)}
                 </div>
-                <span className="text-xs font-semibold tracking-tight text-center">{cat.name}</span>
+                <span className={`${landingHeadlineSm} text-center text-xs tracking-tight sm:text-sm`}>{cat.name}</span>
               </Link>
             ))}
           </motion.div>

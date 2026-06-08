@@ -12,6 +12,7 @@ interface TaskPosterFollowProps {
   profileSlug: string | null;
   posterName: string;
   posterAvatar: string;
+  posterVerified?: boolean;
 }
 
 export default function TaskPosterFollow({
@@ -19,6 +20,7 @@ export default function TaskPosterFollow({
   profileSlug,
   posterName,
   posterAvatar,
+  posterVerified = false,
 }: TaskPosterFollowProps) {
   const { user } = useAuthStore();
   const [isFollowing, setIsFollowing] = useState(false);
@@ -69,16 +71,28 @@ export default function TaskPosterFollow({
   }, [posterId, isOwnProfile, user, isFollowing]);
 
   const avatar = profileHref ? (
-    <Link href={profileHref} className="shrink-0 rounded-full">
-      <UserAvatar src={posterAvatar} alt={posterName} name={posterName} size="lg" />
+    <Link href={profileHref} className="shrink-0 overflow-visible rounded-full">
+      <UserAvatar
+        src={posterAvatar}
+        alt={posterName}
+        name={posterName}
+        size="lg"
+        verified={posterVerified}
+      />
     </Link>
   ) : (
-    <UserAvatar src={posterAvatar} alt={posterName} name={posterName} size="lg" />
+    <UserAvatar
+      src={posterAvatar}
+      alt={posterName}
+      name={posterName}
+      size="lg"
+      verified={posterVerified}
+    />
   );
 
   return (
-    <div className="flex items-start gap-3 md:gap-4 px-1 sm:px-2">
-      {avatar}
+    <div className="flex items-start gap-3 md:gap-4 overflow-visible px-1 sm:px-2">
+      <div className="shrink-0 overflow-visible">{avatar}</div>
       <div className="flex-1 min-w-0">
         <p className="text-[10px] md:text-[11px] font-bold text-on-surface-variant tracking-wider uppercase mb-1">
           Posted by

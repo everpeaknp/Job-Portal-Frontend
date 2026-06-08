@@ -48,12 +48,24 @@ function sortMessages(msgs: Message[]): Message[] {
   });
 }
 
-function profileImageForConversation(conv: Conversation, currentUserId?: string): string | undefined {
-  if (conv.other_participant?.profile_image) {
-    return conv.other_participant.profile_image;
+function otherParticipantForConversation(
+  conv: Conversation,
+  currentUserId?: string
+) {
+  if (conv.other_participant) {
+    return conv.other_participant;
   }
-  const other = conv.participants?.find((p) => String(p.id) !== String(currentUserId));
-  return other?.profile_image;
+  return conv.participants?.find((p) => String(p.id) !== String(currentUserId));
+}
+
+function profileImageForConversation(conv: Conversation, currentUserId?: string): string | undefined {
+  return otherParticipantForConversation(conv, currentUserId)?.profile_image;
+}
+
+function isVerifiedParticipant(conv: Conversation, currentUserId?: string): boolean {
+  return Boolean(
+    otherParticipantForConversation(conv, currentUserId)?.is_verified_tasker
+  );
 }
 
 function dedupeConversations(list: Conversation[]): Conversation[] {
@@ -72,6 +84,7 @@ type PersonConversationGroup = {
   key: string;
   name: string;
   avatar?: string;
+  verified?: boolean;
   conversations: Conversation[];
   latest: Conversation;
   totalUnread: number;
@@ -125,6 +138,7 @@ function groupConversationsByPerson(
       key,
       name: conversationDisplayName(latest, currentUserId),
       avatar: profileImageForConversation(latest, currentUserId),
+      verified: isVerifiedParticipant(latest, currentUserId),
       conversations: sorted,
       latest,
       totalUnread: sorted.reduce((sum, c) => sum + (c.unread_count || 0), 0),
@@ -800,6 +814,11 @@ export default function MessagesSection() {
     : selected
       ? profileImageForConversation(selected, user?.id)
       : undefined;
+  const selectedVerified = selectedGroup
+    ? selectedGroup.verified
+    : selected
+      ? isVerifiedParticipant(selected, user?.id)
+      : false;
   const selectedTaskPath = taskPathForConversation(replyConversation);
   const messageFeed = useMemo(() => buildMessageFeed(messages), [messages]);
   const hasMultipleTasks = (selectedGroup?.conversations.length ?? 0) > 1;
@@ -899,6 +918,7 @@ export default function MessagesSection() {
                     src={group.avatar}
                     name={group.name}
                     size="md"
+                    verified={group.verified}
                     className="shrink-0"
                   />
                   <div className="flex-1 min-w-0">
@@ -957,7 +977,12 @@ export default function MessagesSection() {
                   >
                     <ChevronLeft className="h-5 w-5 text-foreground" />
                   </button>
-                  <UserAvatar src={selectedAvatar} name={selectedName} size="md" />
+                  <UserAvatar
+                    src={selectedAvatar}
+                    name={selectedName}
+                    size="md"
+                    verified={selectedVerified}
+                  />
                   <div className="min-w-0">
                     <h3 className="font-semibold text-foreground leading-tight truncate">
                       {selectedName}
@@ -1034,6 +1059,7 @@ export default function MessagesSection() {
                         src={msg.sender?.profile_image}
                         name={senderName}
                         size="sm"
+                        verified={msg.sender?.is_verified_tasker}
                         className="shrink-0"
                       />
                       <div

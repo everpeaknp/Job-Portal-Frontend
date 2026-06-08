@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, MapPin, Calendar, Flag, Share2, Heart, Copy, Bell, Star, Shield, Send, AlertCircle, X, ExternalLink, Loader2 } from 'lucide-react';
+import { ChevronLeft, MapPin, Calendar, Flag, Share2, Heart, Copy, Bell, Star, Shield, Send, AlertCircle, X, ExternalLink, Loader2, Handshake, Eye } from 'lucide-react';
 import { Task, Bid, TaskQuestion } from '@/types';
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
@@ -24,6 +24,7 @@ import {
   getTaskPosterUser,
   isCurrentUserAssignedTasker,
   isCurrentUserTaskOwner,
+  formatTaskDisplayTitle,
 } from '@/lib/taskUtils';
 import DisputeModal from '@/components/disputes/DisputeModal';
 import TaskReviewsSection from '@/components/reviews/TaskReviewsSection';
@@ -34,10 +35,16 @@ import { getTaskTimeSlotFromRequirements } from '@/lib/timeSlot';
 import TaskTimeSlotText from '@/components/common/TaskTimeSlotText';
 import { saveSimilarTaskPrefill, suggestTaskAlertKeyword } from '@/lib/similarTask';
 import notificationService from '@/services/notification.service';
+import { landingBody, landingHeadline } from '@/components/LangingHome/landingTypography';
+
+/** Premium typography: Manrope body + Outfit/Formula display (matches discover/home). */
+const TASK_DETAILS_TYPO = `${landingBody} [&_h1]:font-formula [&_h1]:font-black [&_h1]:tracking-tight [&_h2]:font-formula [&_h2]:font-extrabold [&_h2]:tracking-tight [&_h3]:font-formula [&_h3]:font-bold [&_h3]:tracking-tight [&_h4]:font-formula [&_h4]:font-semibold [&_h4]:tracking-tight`;
 
 interface TaskDetailsProps {
   task: Task;
   onClose: () => void;
+  /** overlay = browse map panel; page = full route under navbar */
+  variant?: 'overlay' | 'page';
   /** Refresh parent task list after bid count changes */
   onTaskUpdated?: () => void;
 }
@@ -76,7 +83,13 @@ function formatRelativeTime(iso?: string): string {
   }
 }
 
-export default function TaskDetails({ task, onClose, onTaskUpdated }: TaskDetailsProps) {
+export default function TaskDetails({
+  task,
+  onClose,
+  variant = 'overlay',
+  onTaskUpdated,
+}: TaskDetailsProps) {
+  const isPageVariant = variant === 'page';
   const router = useRouter();
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'offers' | 'questions'>('offers');
@@ -110,6 +123,12 @@ export default function TaskDetails({ task, onClose, onTaskUpdated }: TaskDetail
   const disputeAgainstId = isOwner ? getAssignedTaskerId(task) : getTaskOwnerId(task);
   const lookup = taskLookupKey(task);
   const viewTask = detailTask ?? task;
+  const displayTitle = formatTaskDisplayTitle(viewTask.title || task.title || 'Untitled Task');
+
+  const viewsCount = useMemo(() => {
+    const raw = viewTask.views_count ?? viewTask.view_count;
+    return typeof raw === 'number' && Number.isFinite(raw) ? raw : 0;
+  }, [viewTask.views_count, viewTask.view_count]);
 
   const hasAcceptedOffer = useMemo(
     () =>
@@ -240,7 +259,7 @@ export default function TaskDetails({ task, onClose, onTaskUpdated }: TaskDetail
     if (!taskShareUrl) return;
 
     setShareLoading(true);
-    const shareTitle = viewTask.title || task.title || 'Task on tasknepal';
+    const shareTitle = displayTitle || 'Task on tasknepal';
     const shareText = `Check out this task: ${shareTitle}`;
 
     try {
@@ -511,6 +530,9 @@ export default function TaskDetails({ task, onClose, onTaskUpdated }: TaskDetail
     'User';
 
   const posterAvatar = getMediaUrl(nestedPoster?.profile_image || task.owner_image);
+  const posterVerified = Boolean(
+    nestedPoster?.is_verified_tasker ?? task.owner_is_verified
+  );
   const timeSlot = getTaskTimeSlotFromRequirements(
     (viewTask as Task & { requirements?: Array<{ type?: string; label?: string; value?: string }> })
       .requirements
@@ -583,7 +605,7 @@ export default function TaskDetails({ task, onClose, onTaskUpdated }: TaskDetail
           if (!requireSignedIn('Please sign in to report a task', '/task')) return;
           setShowReportModal(true);
         }}
-        className="flex items-center justify-center gap-2 text-on-surface-variant font-sans text-xs md:text-[14px] font-normal leading-[20px] hover:text-error transition-colors py-2"
+        className="flex items-center justify-center gap-2 py-2 text-xs font-normal leading-[20px] text-on-surface-variant transition-colors hover:text-error md:text-[14px]"
       >
         <Flag className="w-3.5 h-3.5 md:w-4 md:h-4 shrink-0" />
         Report this task
@@ -591,13 +613,17 @@ export default function TaskDetails({ task, onClose, onTaskUpdated }: TaskDetail
     </div>
   );
 
+  const rootClassName = isPageVariant
+    ? `relative w-full flex-1 min-h-0 flex flex-col overflow-visible bg-white rounded-2xl shadow-sm ${TASK_DETAILS_TYPO}`
+    : `absolute inset-0 z-[50] flex max-w-[100vw] flex-col overflow-x-hidden overflow-y-auto bg-white ${TASK_DETAILS_TYPO}`;
+
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 16 }}
+    <motion.div
+      initial={isPageVariant ? undefined : { opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 16 }}
+      exit={isPageVariant ? undefined : { opacity: 0, y: 16 }}
       transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-      className="absolute inset-0 bg-white z-[50] max-w-[100vw] overflow-y-auto overflow-x-hidden flex flex-col"
+      className={rootClassName}
     >
       {/* Close Button - Top Right */}
       <button 
@@ -609,8 +635,18 @@ export default function TaskDetails({ task, onClose, onTaskUpdated }: TaskDetail
         <X className="w-5 h-5 md:w-6 md:h-6" />
       </button>
 
-      <div className="flex-1 w-full min-w-0 px-4 sm:px-6 md:px-8 lg:px-10 py-4 sm:py-6 md:py-8 overflow-y-auto overflow-x-hidden">
-        <div className="max-w-7xl mx-auto w-full min-w-0 flex flex-col lg:flex-row gap-5 sm:gap-6 md:gap-8 lg:gap-12">
+      <div
+        className={`flex-1 w-full min-w-0 ${
+          isPageVariant
+            ? 'overflow-visible px-4 py-4 sm:px-6 sm:py-6'
+            : 'overflow-y-auto overflow-x-hidden px-4 sm:px-6 md:px-8 lg:px-10 py-4 sm:py-6 md:py-8'
+        }`}
+      >
+        <div
+          className={`mx-auto w-full min-w-0 flex flex-col lg:flex-row gap-5 sm:gap-6 md:gap-8 lg:gap-12 ${
+            isPageVariant ? 'max-w-full' : 'max-w-7xl'
+          }`}
+        >
           {/* Budget sidebar — top on mobile, right column on desktop */}
           <div className="w-full min-w-0 lg:w-[min(100%,320px)] lg:max-w-[320px] shrink-0 order-first lg:order-last">
             <div className="lg:sticky lg:top-8 space-y-4 md:space-y-6">
@@ -618,7 +654,7 @@ export default function TaskDetails({ task, onClose, onTaskUpdated }: TaskDetail
                 <p className="text-[10px] md:text-[11px] font-bold text-on-surface-variant tracking-wider uppercase mb-2">
                   Task Budget
                 </p>
-                <p className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-[#000d45] mb-4 sm:mb-6 md:mb-8 break-words">
+                <p className={`${landingHeadline} mb-4 break-words text-3xl text-[#000d45] sm:mb-6 sm:text-4xl md:mb-8 md:text-5xl lg:text-6xl`}>
                   {formatNPR(task.budget_amount)}
                 </p>
                 {canSubmitOfferOnTask(task, user?.id) ? (
@@ -661,6 +697,7 @@ export default function TaskDetails({ task, onClose, onTaskUpdated }: TaskDetail
                 profileSlug={posterProfileSlug}
                 posterName={posterName}
                 posterAvatar={posterAvatar}
+                posterVerified={posterVerified}
               />
 
               <div className="hidden lg:block">{moreOptionsSection(sidebarMoreOptionsRef)}</div>
@@ -688,8 +725,8 @@ export default function TaskDetails({ task, onClose, onTaskUpdated }: TaskDetail
                   Completed
                 </span>
               </div>
-              <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-[#000d45] leading-tight mb-2 break-words">
-                {task.title}
+              <h1 className={`${landingHeadline} mb-2 break-words text-xl leading-tight text-[#000d45] sm:text-2xl md:text-3xl lg:text-4xl`}>
+                {displayTitle}
               </h1>
             </div>
 
@@ -801,7 +838,7 @@ export default function TaskDetails({ task, onClose, onTaskUpdated }: TaskDetail
             )}
 
             {/* Tabs */}
-            <div className="pt-4 md:pt-6 border-t border-outline-variant min-w-0 overflow-hidden">
+            <div className="pt-4 md:pt-6 border-t border-outline-variant min-w-0">
               <div className="flex bg-[#fff9db] p-1 rounded-full w-full max-w-full mb-6 md:mb-8">
                 <button 
                   onClick={() => setActiveTab('offers')}
@@ -854,19 +891,10 @@ export default function TaskDetails({ task, onClose, onTaskUpdated }: TaskDetail
                     </div>
                   ) : bids.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-8 md:py-12 text-center">
-                      <div className="w-24 h-24 md:w-32 md:h-32 mb-4 md:mb-6">
-                        <svg 
-                          viewBox="0 0 100 100" 
-                          className="w-full h-full text-surface-variant fill-none stroke-current" 
-                          strokeWidth="2"
-                        >
-                          <circle cx="50" cy="40" r="15" />
-                          <path d="M30 70 Q50 90 70 70" />
-                          <line x1="45" y1="35" x2="55" y2="45" />
-                          <circle cx="70" cy="30" r="10" />
-                          <path d="M10 20 L90 20 L90 80 L10 80 Z" />
-                        </svg>
-                      </div>
+                      <Handshake
+                        className="mb-4 h-24 w-24 stroke-[1.25] text-surface-variant md:mb-6 md:h-32 md:w-32"
+                        aria-hidden
+                      />
                       <h3 className="text-xl md:text-2xl font-bold text-[#000d45] mb-2">No offers yet</h3>
                       <p className="text-on-surface-variant text-base md:text-lg">
                         {canSubmitOfferOnTask(task, user?.id)
@@ -898,10 +926,17 @@ export default function TaskDetails({ task, onClose, onTaskUpdated }: TaskDetail
                         return (
                           <div
                             key={bid.id}
-                            className="border border-outline-variant rounded-2xl p-4 md:p-6 hover:shadow-lg transition-all min-w-0 overflow-hidden"
+                            className="border border-outline-variant rounded-2xl p-4 md:p-6 hover:shadow-lg transition-all min-w-0"
                           >
                             <div className="flex flex-col sm:flex-row items-start gap-4 mb-4">
-                              <UserAvatar src={taskerImage} name={taskerName} size="lg" />
+                              <div className="shrink-0 overflow-visible">
+                                <UserAvatar
+                                  src={taskerImage}
+                                  name={taskerName}
+                                  size="lg"
+                                  verified={isVerified}
+                                />
+                              </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                                   <h4 className="font-bold text-base md:text-lg text-[#000d45]">
@@ -1059,14 +1094,25 @@ export default function TaskDetails({ task, onClose, onTaskUpdated }: TaskDetail
                           q.asked_by_image ||
                             (q.user && typeof q.user === 'object' ? q.user.profile_image : undefined)
                         );
+                        const askerVerified =
+                          q.user && typeof q.user === 'object'
+                            ? Boolean(q.user.is_verified_tasker)
+                            : false;
 
                         return (
                           <div
                             key={q.id}
-                            className="border border-outline-variant rounded-2xl p-4 md:p-6 min-w-0 overflow-hidden"
+                            className="border border-outline-variant rounded-2xl p-4 md:p-6 min-w-0"
                           >
                             <div className="flex items-start gap-3 md:gap-4 mb-3 md:mb-4">
-                              <UserAvatar src={askerImage} name={askerName} size="md" />
+                              <div className="shrink-0 overflow-visible">
+                                <UserAvatar
+                                  src={askerImage}
+                                  name={askerName}
+                                  size="md"
+                                  verified={askerVerified}
+                                />
+                              </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                                   <h4 className="font-bold text-sm md:text-base text-[#000d45]">
@@ -1085,9 +1131,16 @@ export default function TaskDetails({ task, onClose, onTaskUpdated }: TaskDetail
                             </div>
 
                             {(q.is_answered || q.answer) && q.answer ? (
-                              <div className="ml-4 sm:ml-8 md:ml-16 pl-3 sm:pl-4 md:pl-6 border-l-2 border-outline-variant min-w-0 overflow-hidden">
+                              <div className="ml-4 sm:ml-8 md:ml-16 pl-3 sm:pl-4 md:pl-6 border-l-2 border-outline-variant min-w-0">
                                 <div className="flex items-start gap-3 md:gap-4">
-                                  <UserAvatar src={posterAvatar} name={posterName} size="sm" />
+                                  <div className="shrink-0 overflow-visible">
+                                    <UserAvatar
+                                      src={posterAvatar}
+                                      name={posterName}
+                                      size="sm"
+                                      verified={posterVerified}
+                                    />
+                                  </div>
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                                       <h4 className="font-bold text-xs md:text-sm text-[#000d45]">
@@ -1190,6 +1243,16 @@ export default function TaskDetails({ task, onClose, onTaskUpdated }: TaskDetail
                   <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
                   <span>Back</span>
                 </button>
+                <div
+                  className="flex items-center gap-2 text-on-surface-variant text-sm md:text-base"
+                  aria-label={`${viewsCount} views on this task`}
+                >
+                  <Eye className="w-4 h-4 md:w-5 md:h-5 shrink-0" />
+                  <span className="font-semibold text-[#000d45]">
+                    {loadingDetailTask && !detailTask ? '…' : viewsCount.toLocaleString()}
+                  </span>
+                  <span>{viewsCount === 1 ? 'view' : 'views'}</span>
+                </div>
                 <button
                   type="button"
                   onClick={() => void handleToggleBookmark()}
@@ -1257,7 +1320,7 @@ export default function TaskDetails({ task, onClose, onTaskUpdated }: TaskDetail
           onClose={() => setShowDisputeModal(false)}
           taskId={String(task.id)}
           againstUserId={disputeAgainstId}
-          taskTitle={task.title}
+          taskTitle={displayTitle}
         />
       )}
     </motion.div>

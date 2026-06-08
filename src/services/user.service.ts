@@ -85,6 +85,36 @@ export const userService = {
   },
 
   /**
+   * Public user directory (search + filters) for /users/
+   */
+  async getUserDirectory(params?: {
+    search?: string;
+    q?: string;
+    role?: 'tasker' | 'customer';
+    city?: string;
+    min_rating?: number;
+    verified_only?: boolean;
+    sort_by?: 'rating' | 'tasks' | 'newest' | 'name';
+    page?: number;
+    page_size?: number;
+  }): Promise<ApiResponse<PaginatedResponse<UserDirectoryEntry>>> {
+    const query: Record<string, string | number | boolean> = {};
+    if (params?.search) query.search = params.search;
+    if (params?.q) query.q = params.q;
+    if (params?.role) query.role = params.role;
+    if (params?.city) query.city = params.city;
+    if (params?.min_rating != null) query.min_rating = params.min_rating;
+    if (params?.verified_only) query.verified_only = 'true';
+    if (params?.sort_by) query.sort_by = params.sort_by;
+    if (params?.page) query.page = params.page;
+    if (params?.page_size) query.page_size = params.page_size;
+
+    return apiClient.get<PaginatedResponse<UserDirectoryEntry>>('/users/directory/', {
+      params: query,
+    });
+  },
+
+  /**
    * Get verified taskers
    */
   async getVerifiedTaskers(params?: {
@@ -390,5 +420,24 @@ export const userService = {
     return apiClient.post<{ message: string }>('/users/me/link-bank-account/', data);
   }
 };
+
+export interface UserDirectoryEntry {
+  id: string;
+  username?: string;
+  full_name?: string;
+  profile_image?: string | null;
+  role?: string;
+  bio?: string;
+  tagline?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  location_display?: string;
+  average_rating?: number;
+  total_reviews?: number;
+  tasks_completed?: number;
+  is_verified_tasker?: boolean;
+  is_online?: boolean;
+}
 
 export default userService;

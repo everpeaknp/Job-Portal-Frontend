@@ -16,9 +16,18 @@ import {
 } from 'lucide-react';
 import { useTaskerStats } from '@/context/TaskerStatsContext';
 import { useAuth } from '@/hooks/useAuth';
+import { cn } from '@/lib/utils';
 import { formatNPR } from '@/lib/nepalLocale';
 import type { TaskerTierInfo, UserStats } from '@/services/dashboard.service';
 import { walletService, type WalletBalance } from '@/services/wallet.service';
+import {
+  landingBody,
+  landingBodyMuted,
+  landingHeadline,
+  landingHeadlineSm,
+} from '@/components/LangingHome/landingTypography';
+
+const DASHBOARD_TYPO = `${landingBody} [&_h1]:font-formula [&_h1]:font-black [&_h1]:tracking-tight [&_h2]:font-formula [&_h2]:font-extrabold [&_h2]:tracking-tight [&_h3]:font-formula [&_h3]:font-bold [&_h3]:tracking-tight`;
 
 const TIER_STYLES: Record<
   string,
@@ -169,14 +178,25 @@ export default function DashboardOverview() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-4xl space-y-8 sm:space-y-10"
+      className={cn(DASHBOARD_TYPO, 'max-w-4xl space-y-8 pb-20 sm:space-y-10')}
     >
       <header className="space-y-2">
-        <h1 className="text-2xl font-black uppercase tracking-tighter text-blue-950 sm:text-4xl">
-          My Tasker Dashboard
+        <p
+          className={cn(
+            landingHeadlineSm,
+            'mb-2 text-[10px] uppercase tracking-[0.3em] text-primary',
+          )}
+        >
+          Tasker hub
+        </p>
+        <h1 className={cn(landingHeadline, 'text-2xl text-[#000d45] sm:text-4xl')}>
+          My tasker dashboard
         </h1>
+        <p className={cn(landingBodyMuted, 'max-w-xl text-sm leading-relaxed')}>
+          Track your tier, earnings, and active work — all in one place.
+        </p>
         {error && (
-          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-4 py-2">
+          <p className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-2 text-sm text-amber-700">
             {error}. Showing the latest available data.
           </p>
         )}
@@ -191,8 +211,8 @@ export default function DashboardOverview() {
             <Search className="w-5 h-5" />
           </div>
           <div>
-            <p className="font-bold text-blue-950">Browse tasks</p>
-            <p className="text-xs text-gray-500">Find work near you</p>
+            <p className={cn(landingHeadlineSm, 'text-sm text-[#000d45]')}>Browse tasks</p>
+            <p className={cn(landingBodyMuted, 'text-xs')}>Find work near you</p>
           </div>
         </Link>
         <Link
@@ -203,11 +223,11 @@ export default function DashboardOverview() {
             <Briefcase className="w-5 h-5" />
           </div>
           <div>
-            <p className="font-bold text-blue-950">My tasks</p>
-            <p className="text-xs text-gray-500">
+            <p className={cn(landingHeadlineSm, 'text-sm text-[#000d45]')}>My tasks</p>
+            <p className={cn(landingBodyMuted, 'text-xs')}>
               {taskActive ?? 0} active · {taskCompleted} completed
               {stats?.role === 'customer' && taskCompleted > 0 && (
-                <span className="block text-[10px] text-amber-700 mt-0.5">
+                <span className="mt-0.5 block text-[10px] text-amber-700">
                   Posted as customer — open My tasks for assigned work
                 </span>
               )}
@@ -222,10 +242,12 @@ export default function DashboardOverview() {
             <Wallet className="w-5 h-5" />
           </div>
           <div>
-            <p className="font-bold text-blue-950">{formatNPR(walletBalance)}</p>
-            <p className="text-xs text-gray-500">Available balance · {currency}</p>
+            <p className={cn(landingHeadlineSm, 'text-sm text-[#000d45]')}>
+              {formatNPR(walletBalance)}
+            </p>
+            <p className={cn(landingBodyMuted, 'text-xs')}>Available balance · {currency}</p>
             {(heldBalance > 0 || pendingBalance > 0) && (
-              <p className="text-[10px] text-amber-700 mt-0.5 leading-snug">
+              <p className="mt-0.5 text-[10px] leading-snug text-amber-700">
                 {heldBalance > 0 && `${formatNPR(heldBalance)} in escrow`}
                 {heldBalance > 0 && pendingBalance > 0 && ' · '}
                 {pendingBalance > 0 && `${formatNPR(pendingBalance)} pending`}
@@ -236,14 +258,21 @@ export default function DashboardOverview() {
       </section>
 
       <section className="space-y-6">
-        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-          Your Current Tier
-        </label>
+        <p
+          className={cn(
+            landingHeadlineSm,
+            'text-[10px] uppercase tracking-[0.3em] text-[#6a719a]',
+          )}
+        >
+          Your current tier
+        </p>
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-6">
           <TierMedal tier={currentTier} />
           <div className="space-y-1">
-            <h2 className="text-2xl font-bold text-blue-950 sm:text-3xl">{currentTier.name}</h2>
-            <p className="text-base text-gray-600 sm:text-lg">
+            <h2 className={cn(landingHeadline, 'text-2xl text-[#000d45] sm:text-3xl')}>
+              {currentTier.name}
+            </h2>
+            <p className={cn(landingBodyMuted, 'text-base sm:text-lg')}>
               {currentTier.service_fee_percent}% service fee excl. GST
             </p>
           </div>
@@ -254,17 +283,24 @@ export default function DashboardOverview() {
         <>
           <hr className="border-gray-100" />
           <section className="space-y-6">
-            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-              Your Next Tier
-            </label>
+            <p
+              className={cn(
+                landingHeadlineSm,
+                'text-[10px] uppercase tracking-[0.3em] text-[#6a719a]',
+              )}
+            >
+              Your next tier
+            </p>
             <div className="flex flex-col items-start gap-4 opacity-80 sm:flex-row sm:items-center sm:gap-6">
               <TierMedal tier={nextTier} locked />
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-2xl font-bold text-blue-950 sm:text-3xl">{nextTier.name}</h2>
-                  <Lock className="w-6 h-6 text-blue-950" />
+                  <h2 className={cn(landingHeadline, 'text-2xl text-[#000d45] sm:text-3xl')}>
+                    {nextTier.name}
+                  </h2>
+                  <Lock className="h-6 w-6 text-[#000d45]" />
                 </div>
-                <p className="text-base text-gray-600 sm:text-lg">
+                <p className={cn(landingBodyMuted, 'text-base sm:text-lg')}>
                   {nextTier.service_fee_percent}% service fee excl. GST
                 </p>
               </div>
@@ -274,15 +310,19 @@ export default function DashboardOverview() {
       )}
 
       <section className="space-y-4">
-        <h3 className="text-xl font-bold text-blue-950">Your Earnings (last 30 days)</h3>
+        <h3 className={cn(landingHeadline, 'text-xl text-[#000d45]')}>
+          Your earnings (last 30 days)
+        </h3>
         {nextTier ? (
-          <p className="text-gray-600">
+          <p className={cn(landingBodyMuted, 'text-sm leading-relaxed')}>
             Your earnings are{' '}
-            <span className="font-bold">{formatNPR(amountToNext)}</span> away from{' '}
-            <span className="font-bold">{nextTier.name}</span> and lowering service fees.
+            <span className={cn(landingHeadlineSm, 'text-[#000d45]')}>{formatNPR(amountToNext)}</span>{' '}
+            away from{' '}
+            <span className={cn(landingHeadlineSm, 'text-[#000d45]')}>{nextTier.name}</span> and
+            lowering service fees.
           </p>
         ) : (
-          <p className="text-gray-600">
+          <p className={cn(landingBodyMuted, 'text-sm leading-relaxed')}>
             You&apos;re on the highest tier. Keep up the great work to maintain your lower service
             fee.
           </p>
@@ -294,12 +334,17 @@ export default function DashboardOverview() {
               animate={{ width: `${Math.max(nextTier ? 5 : 100, progress)}%` }}
               className="h-full bg-primary flex items-center px-4 min-w-[4rem]"
             >
-              <span className="text-white text-sm font-bold whitespace-nowrap">
+              <span className={cn(landingHeadlineSm, 'whitespace-nowrap text-sm text-white')}>
                 {formatNPR(earnings30d)}
               </span>
             </motion.div>
           </div>
-          <div className="flex flex-wrap justify-between gap-x-1 gap-y-2 px-1 text-[10px] font-medium text-gray-400 sm:text-xs">
+          <div
+            className={cn(
+              landingBodyMuted,
+              'flex flex-wrap justify-between gap-x-1 gap-y-2 px-1 text-[10px] sm:text-xs',
+            )}
+          >
             {milestones.map((milestone) => (
               <span
                 key={milestone.slug}
@@ -319,36 +364,60 @@ export default function DashboardOverview() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
             {stats.bids && (
               <>
-                <div className="bg-white p-4 rounded-2xl border border-outline-variant">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                    Total Bids
+                <div className="rounded-2xl border border-outline-variant bg-white p-4">
+                  <p
+                    className={cn(
+                      landingHeadlineSm,
+                      'text-[10px] uppercase tracking-[0.2em] text-[#6a719a]',
+                    )}
+                  >
+                    Total bids
                   </p>
-                  <p className="text-2xl font-black text-blue-950 mt-1">{stats.bids.total}</p>
+                  <p className={cn(landingHeadline, 'mt-1 text-2xl text-[#000d45]')}>
+                    {stats.bids.total}
+                  </p>
                 </div>
-                <div className="bg-white p-4 rounded-2xl border border-outline-variant">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                    Pending Offers
+                <div className="rounded-2xl border border-outline-variant bg-white p-4">
+                  <p
+                    className={cn(
+                      landingHeadlineSm,
+                      'text-[10px] uppercase tracking-[0.2em] text-[#6a719a]',
+                    )}
+                  >
+                    Pending offers
                   </p>
-                  <p className="text-2xl font-black text-blue-950 mt-1">
+                  <p className={cn(landingHeadline, 'mt-1 text-2xl text-[#000d45]')}>
                     {stats.bids.pending ?? 0}
                   </p>
                 </div>
               </>
             )}
             {stats.tasks && (
-              <div className="bg-white p-4 rounded-2xl border border-outline-variant">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+              <div className="rounded-2xl border border-outline-variant bg-white p-4">
+                <p
+                  className={cn(
+                    landingHeadlineSm,
+                    'text-[10px] uppercase tracking-[0.2em] text-[#6a719a]',
+                  )}
+                >
                   Completed
                 </p>
-                <p className="text-2xl font-black text-blue-950 mt-1">{stats.tasks.completed}</p>
+                <p className={cn(landingHeadline, 'mt-1 text-2xl text-[#000d45]')}>
+                  {stats.tasks.completed}
+                </p>
               </div>
             )}
             {stats.reviews && (
-              <div className="bg-white p-4 rounded-2xl border border-outline-variant">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+              <div className="rounded-2xl border border-outline-variant bg-white p-4">
+                <p
+                  className={cn(
+                    landingHeadlineSm,
+                    'text-[10px] uppercase tracking-[0.2em] text-[#6a719a]',
+                  )}
+                >
                   Rating
                 </p>
-                <p className="text-2xl font-black text-blue-950 mt-1">
+                <p className={cn(landingHeadline, 'mt-1 text-2xl text-[#000d45]')}>
                   {formatReceivedRating(stats.reviews, user?.average_rating)}
                 </p>
               </div>
@@ -360,10 +429,13 @@ export default function DashboardOverview() {
       {activeTasks.length > 0 && (
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-blue-950">Active tasks</h3>
+            <h3 className={cn(landingHeadline, 'text-xl text-[#000d45]')}>Active tasks</h3>
             <Link
               href="/my-tasks"
-              className="text-sm font-bold text-primary hover:opacity-80 inline-flex items-center gap-1"
+              className={cn(
+                landingHeadlineSm,
+                'inline-flex items-center gap-1 text-sm text-primary hover:opacity-80',
+              )}
             >
               View all
               <ChevronRight className="w-4 h-4" />
@@ -377,10 +449,14 @@ export default function DashboardOverview() {
                   className="flex items-center justify-between gap-4 p-4 rounded-2xl border border-outline-variant bg-white hover:border-primary/30 transition-colors"
                 >
                   <div className="min-w-0">
-                    <p className="font-bold text-blue-950 truncate">{task.title}</p>
-                    <p className="text-sm text-gray-500">{formatStatusLabel(task.status)}</p>
+                    <p className={cn(landingHeadlineSm, 'truncate text-sm text-[#000d45]')}>
+                      {task.title}
+                    </p>
+                    <p className={cn(landingBodyMuted, 'text-sm')}>
+                      {formatStatusLabel(task.status)}
+                    </p>
                   </div>
-                  <span className="text-sm font-bold text-gray-600 shrink-0">
+                  <span className={cn(landingHeadlineSm, 'shrink-0 text-sm text-[#6a719a]')}>
                     {formatNPR(task.budget)}
                   </span>
                 </Link>
@@ -394,9 +470,12 @@ export default function DashboardOverview() {
         <button
           type="button"
           onClick={() => setShowTierHelp(true)}
-          className="flex items-center gap-2 text-primary font-bold hover:opacity-80 transition-colors"
+          className={cn(
+            landingHeadlineSm,
+            'flex items-center gap-2 text-primary transition-colors hover:opacity-80',
+          )}
         >
-          <HelpCircle className="w-5 h-5" />
+          <HelpCircle className="h-5 w-5" />
           <span>How do tiers work?</span>
         </button>
       </footer>
@@ -418,7 +497,7 @@ export default function DashboardOverview() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-4 mb-4">
-                <h4 className="text-xl font-bold text-blue-950">How tiers work</h4>
+                <h4 className={cn(landingHeadline, 'text-xl text-[#000d45]')}>How tiers work</h4>
                 <button
                   type="button"
                   onClick={() => setShowTierHelp(false)}
@@ -428,7 +507,7 @@ export default function DashboardOverview() {
                   <X className="w-5 h-5 text-gray-500" />
                 </button>
               </div>
-              <p className="text-gray-600 text-sm leading-relaxed mb-4">
+              <p className={cn(landingBodyMuted, 'mb-4 text-sm leading-relaxed')}>
                 Your tier is based on task earnings received in the last 30 days. Higher tiers unlock
                 lower service fees on completed tasks.
               </p>
@@ -436,10 +515,12 @@ export default function DashboardOverview() {
                 {milestones.map((milestone) => (
                   <li
                     key={milestone.slug}
-                    className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0"
+                    className="flex items-center justify-between border-b border-gray-50 py-2 last:border-0"
                   >
-                    <span className="font-bold text-blue-950">{milestone.name}</span>
-                    <span className="text-gray-600">
+                    <span className={cn(landingHeadlineSm, 'text-sm text-[#000d45]')}>
+                      {milestone.name}
+                    </span>
+                    <span className={cn(landingBodyMuted, 'text-sm')}>
                       {milestone.min_earnings === 0
                         ? 'Starting tier'
                         : `${formatNPR(milestone.min_earnings)}+ · ${milestone.service_fee_percent}% fee`}

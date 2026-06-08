@@ -17,8 +17,9 @@ import { paymentService } from '@/services';
 import type { FeePreview } from '@/services/payment.service';
 import { formatNPR } from '@/lib/nepalLocale';
 import { Bid, Task } from '@/types';
-import { X, Check, AlertCircle, DollarSign, Clock, User } from 'lucide-react';
+import { X, Check, AlertCircle, DollarSign, Clock } from 'lucide-react';
 import PaymentModal from '@/components/payment/PaymentModal';
+import UserAvatar from '@/components/common/UserAvatar';
 
 interface AcceptOfferModalProps {
   offer: Bid;
@@ -143,19 +144,12 @@ export function AcceptOfferModal({
             <div className="bg-blue-50 rounded-lg p-4">
               <h3 className="font-semibold text-gray-900 mb-3">Selected Provider</h3>
               <div className="flex items-start gap-4">
-                <div className="relative">
-                  {offer.tasker.profile_image ? (
-                    <img
-                      src={offer.tasker.profile_image}
-                      alt={`${offer.tasker.first_name} ${offer.tasker.last_name}`}
-                      className="w-16 h-16 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
-                      <User className="h-8 w-8 text-gray-400" />
-                    </div>
-                  )}
-                </div>
+                <UserAvatar
+                  src={offer.tasker.profile_image}
+                  name={`${offer.tasker.first_name || ''} ${offer.tasker.last_name || ''}`.trim()}
+                  size="xl"
+                  verified={offer.tasker.is_verified_tasker}
+                />
                 <div className="flex-1">
                   <h4 className="font-semibold text-gray-900">
                     {offer.tasker.first_name} {offer.tasker.last_name}

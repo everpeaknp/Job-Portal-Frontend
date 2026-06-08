@@ -3,6 +3,7 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Star } from 'lucide-react';
+import UserAvatar from '@/components/common/UserAvatar';
 import { format } from 'date-fns';
 import { Review } from '@/types';
 
@@ -38,10 +39,11 @@ export default function ReviewCard({ review, showTaskInfo = false }: ReviewCardP
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center space-x-3">
-          <img
-            src={review.reviewer.profile_image || '/images/default-avatar.png'}
-            alt={review.reviewer.full_name}
-            className="w-12 h-12 rounded-full"
+          <UserAvatar
+            src={review.reviewer.profile_image}
+            name={review.reviewer.full_name}
+            size="lg"
+            verified={review.reviewer.is_verified_tasker}
           />
           <div>
             <h4 className="font-semibold">{review.reviewer.full_name}</h4>

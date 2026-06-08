@@ -2,10 +2,11 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Search, ChevronDown } from 'lucide-react';
-import { landingHeadline, landingHeadlineSm } from '@/components/LangingHome/landingTypography';
+import { landingBody, landingHeadline, landingHeadlineSm } from '@/components/LangingHome/landingTypography';
+import { IdeaGeneratorHeroDecor } from '@/components/ui/idea-generator-hero-section';
 
 const pillButtonClass =
-  'inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-2.5 text-center text-xs font-semibold leading-snug text-white transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/20 active:scale-[0.98] sm:min-h-9 sm:w-auto sm:justify-start sm:px-4 sm:py-2 sm:text-left sm:text-sm md:px-4 md:py-2.5';
+  `${landingBody} inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-2.5 text-center text-xs font-semibold leading-snug text-white backdrop-blur-sm transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/20 active:scale-[0.98] sm:min-h-9 sm:w-auto sm:justify-start sm:px-4 sm:py-2 sm:text-left sm:text-sm md:px-4 md:py-2.5`;
 
 interface HeroProps {
   onPostWithTitle: (title: string) => void;
@@ -67,60 +68,52 @@ export default function Hero({ onPostWithTitle }: HeroProps) {
 
   return (
     <div className={`w-full ${showInspirationMenu ? 'relative z-30' : ''}`}>
-      <section
-        className="relative bg-gradient-to-br from-[#005fff] via-[#0047ff] to-[#03113c] py-10 text-left text-white shadow-md transition-all duration-300 sm:py-16 md:py-24"
-      >
-        {/* Decorative layer — overflow hidden only here so dropdown is not clipped */}
-        <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-sky-400 via-indigo-500 to-transparent opacity-20" />
-          <div className="absolute top-1/4 right-0 hidden h-48 w-48 rounded-full bg-cyan-400 opacity-10 mix-blend-screen blur-3xl filter animate-pulse sm:block sm:h-64 sm:w-64" />
-          <div className="absolute -bottom-10 -left-10 h-48 w-48 rounded-full bg-blue-500 opacity-15 mix-blend-screen blur-3xl filter sm:h-72 sm:w-72" />
-        </div>
+      <section className="relative overflow-hidden bg-gradient-to-br from-[#005fff] via-[#0047ff] to-[#03113c] py-12 text-white shadow-md transition-all duration-300 sm:py-20 md:py-28">
+        <IdeaGeneratorHeroDecor />
 
-        {/* Main Wrapper content */}
-        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Core Headline */}
+        <div className="relative z-10 mx-auto flex max-w-7xl flex-col items-center px-4 text-center sm:px-6 lg:px-8">
           <div className="max-w-3xl space-y-4">
             <h1
               className={`${landingHeadline} text-[1.75rem] leading-[1.1] text-white drop-shadow-sm text-balance sm:text-4xl md:text-5xl lg:text-6xl`}
             >
               Post a task. Get it done.
             </h1>
-            <p className="max-w-lg text-sm leading-relaxed font-medium text-blue-100 sm:text-base">
+            <p className={`${landingBody} mx-auto max-w-lg text-sm font-medium leading-relaxed text-blue-100 sm:text-base`}>
               Connect with certified, friendly local taskers ready to help you with furniture,
               moving, repairs, deep cleaning, and more.
             </p>
           </div>
 
-          {/* Input Form Box container */}
-          <form
-            onSubmit={handleFormSubmit}
-            className="mt-6 flex max-w-5xl flex-col items-stretch gap-2.5 rounded-2xl border border-white/10 bg-white p-2 shadow-xl sm:mt-10 sm:flex-row sm:items-center sm:gap-3 sm:p-3.5"
-          >
-            {/* Main prompt text input */}
-            <div className="relative flex-1 w-full">
-              <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400 sm:left-4" />
-              <input
-                type="text"
-                placeholder="In a few words, what do you need done?"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                className="min-h-12 w-full rounded-xl border-none py-3 pl-11 pr-3 text-base font-medium text-[#03113c] placeholder-gray-400 focus:outline-none focus:ring-0 sm:pl-12 sm:text-base"
-              />
+          <form onSubmit={handleFormSubmit} className="relative mt-8 w-full max-w-2xl sm:mt-12">
+            <div
+              className="pointer-events-none absolute inset-0 scale-110 rounded-full bg-gradient-to-r from-cyan-400/25 via-[#0066ff]/30 to-cyan-400/25 blur-xl"
+              aria-hidden
+            />
+            <div className="relative rounded-full border border-white/25 bg-white/10 p-1 shadow-2xl backdrop-blur-md">
+              <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+                <div className="relative min-w-0 flex-1">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-blue-200/80 sm:left-5" />
+                  <input
+                    type="text"
+                    placeholder="In a few words, what do you need done?"
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    className={`${landingBody} w-full rounded-full bg-transparent py-3.5 pl-11 pr-4 text-base font-medium text-white placeholder-blue-200/70 focus:outline-none sm:min-h-12 sm:py-4 sm:pl-12 sm:text-base`}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className={`${landingBody} inline-flex min-h-11 shrink-0 cursor-pointer select-none items-center justify-center gap-2 rounded-full bg-[#03113c]/90 px-6 py-3 text-sm font-semibold text-white shadow-sm backdrop-blur-sm transition duration-200 hover:bg-[#03113c] active:scale-95 sm:mr-1 sm:min-h-12 sm:px-7 sm:text-base`}
+                >
+                  <span>Get Offers</span>
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-
-            <button
-              type="submit"
-              className="inline-flex min-h-12 w-full shrink-0 cursor-pointer select-none items-center justify-center space-x-2 rounded-xl bg-[#03113c] px-7 py-3.5 text-sm font-semibold text-white shadow-sm transition duration-200 active:scale-95 hover:bg-black sm:w-auto sm:text-base"
-            >
-              <span>Get Offers</span>
-              <ArrowRight className="h-4.5 w-4.5" />
-            </button>
           </form>
 
-          {/* Quick assistance suggestion triggers */}
-          <div className="mt-5 max-w-5xl sm:mt-6 lg:mt-8">
-            <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2 md:flex md:flex-wrap md:items-stretch md:gap-2.5 lg:gap-3">
+          <div className="mt-6 w-full max-w-5xl sm:mt-8 lg:mt-10">
+            <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2 md:flex md:flex-wrap md:items-stretch md:justify-center md:gap-2.5 lg:gap-3">
               {quickPills.map((pill) => (
                 <button
                   key={pill.title}
@@ -136,7 +129,6 @@ export default function Hero({ onPostWithTitle }: HeroProps) {
                 </button>
               ))}
 
-              {/* More inspiration — full-width row on narrow mobile; inline from md */}
               <div
                 ref={inspirationRef}
                 className="relative col-span-1 min-[380px]:col-span-2 md:col-span-1 md:w-auto lg:shrink-0"
@@ -162,7 +154,7 @@ export default function Hero({ onPostWithTitle }: HeroProps) {
                     id="hero-inspiration-panel"
                     role="region"
                     aria-label="Popular task ideas"
-                    className="relative z-50 mt-2 w-full rounded-xl border border-white/20 bg-[#03113c] p-2 text-left shadow-2xl animate-in fade-in slide-in-from-top-2 duration-150 md:absolute md:left-0 md:top-[calc(100%+0.5rem)] md:mt-0 md:w-72 md:max-w-[min(100vw-2rem,20rem)] lg:left-auto lg:right-0"
+                    className="relative z-50 mt-2 w-full rounded-xl border border-white/20 bg-[#03113c] p-2 text-left shadow-2xl animate-in fade-in slide-in-from-top-2 duration-150 md:absolute md:left-1/2 md:top-[calc(100%+0.5rem)] md:mt-0 md:w-72 md:max-w-[min(100vw-2rem,20rem)] md:-translate-x-1/2"
                   >
                     <span
                       className={`${landingHeadlineSm} block px-2 pb-1 pt-1 text-[10px] uppercase tracking-wider text-blue-400`}
@@ -178,7 +170,7 @@ export default function Hero({ onPostWithTitle }: HeroProps) {
                               setShowInspirationMenu(false);
                               onPostWithTitle(idea);
                             }}
-                            className="w-full cursor-pointer rounded-lg px-3 py-2.5 text-left text-xs font-medium text-gray-200 transition hover:bg-white/10 hover:text-white sm:text-sm"
+                            className={`${landingBody} w-full cursor-pointer rounded-lg px-3 py-2.5 text-left text-xs font-medium text-gray-200 transition hover:bg-white/10 hover:text-white sm:text-sm`}
                           >
                             {idea}
                           </button>
@@ -190,10 +182,8 @@ export default function Hero({ onPostWithTitle }: HeroProps) {
               </div>
             </div>
           </div>
-
         </div>
       </section>
     </div>
   );
 }
-

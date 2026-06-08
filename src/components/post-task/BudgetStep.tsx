@@ -6,6 +6,14 @@ import {
   BUDGET_MIN_NPR,
   formatNPR,
 } from '@/lib/nepalLocale';
+import {
+  postTaskStepTitle,
+  postTaskStepSubtitle,
+  postTaskLabel,
+  postTaskInput,
+  postTaskInputError,
+  postTaskErrorText,
+} from '@/components/post-task/postTaskStyles';
 
 export interface TaskData {
   title: string;
@@ -33,7 +41,14 @@ export type BudgetStepPropsV2 = {
   maxBudget?: number;
 };
 
-export const BudgetStep: React.FC<BudgetStepPropsV2> = ({ data, updateData, showErrors, error, minBudget, maxBudget }) => {
+export const BudgetStep: React.FC<BudgetStepPropsV2> = ({
+  data,
+  updateData,
+  showErrors,
+  error,
+  minBudget,
+  maxBudget,
+}) => {
   const [isTouched, setIsTouched] = useState(false);
   const budget = data.budgetAmount;
   const min = typeof minBudget === 'number' ? minBudget : BUDGET_MIN_NPR;
@@ -41,45 +56,44 @@ export const BudgetStep: React.FC<BudgetStepPropsV2> = ({ data, updateData, show
   const isInvalid = (isTouched || showErrors) && (budget < min || budget > max);
 
   return (
-    <div className="w-full text-[#0a1452]">
-      <h1
-        className="mb-6 text-2xl font-bold uppercase tracking-tight sm:mb-8 sm:text-3xl lg:mb-12 lg:text-4xl"
-        style={{ fontFamily: '"Space Grotesk", sans-serif' }}
-      >
-        Suggest your budget
-      </h1>
+    <div className="w-full">
+      <h1 className={`${postTaskStepTitle} mb-2`}>Suggest your budget</h1>
+      <p className={`${postTaskStepSubtitle} mb-6 sm:mb-8`}>
+        Set a starting point — taskers can negotiate from here.
+      </p>
 
-      <div className="space-y-6 lg:max-w-xl">
+      <div className="space-y-4 lg:max-w-md">
         <div>
-          <h3 className="text-[15px] font-bold mb-1">What is your budget?</h3>
-          <p className="text-[15px] font-medium text-gray-400 mb-6" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
-            You can always negotiate the final price.
+          <h3 className={`${postTaskLabel} mb-1`}>What is your budget?</h3>
+          <p className={`${postTaskStepSubtitle} mb-4 text-sm`}>
+            Between {formatNPR(min)} and {formatNPR(max)}
           </p>
 
-          <div className="relative group lg:max-w-md">
+          <div className="relative">
             <div
-              className={`flex items-center w-full bg-gray-50 border-2 rounded-2xl transition-all ${
-                isInvalid 
-                  ? 'border-[#ff4d00] ring-1 ring-[#ff4d00]' 
-                  : 'border-transparent focus-within:border-[#0066ff] focus-within:ring-1 focus-within:ring-[#0066ff]'
+              className={`flex items-center rounded-2xl transition-all ${
+                isInvalid ? postTaskInputError : 'bg-gray-50 focus-within:bg-gray-100'
               }`}
             >
-              <div className="pl-6 pr-2">
-                <Banknote className={`w-5 h-5 ${isInvalid ? 'text-[#ff4d00]' : 'text-gray-400'}`} />
+              <div className="pl-5 pr-1">
+                <Banknote
+                  className={`h-5 w-5 ${isInvalid ? 'text-red-500' : 'text-[#8a96b0]'}`}
+                />
               </div>
               <input
                 type="number"
-                className="w-full border-none bg-transparent px-2 py-4 text-lg font-bold text-[#0a1452] outline-none placeholder:text-gray-300 [appearance:textfield] focus:ring-0 sm:py-5 sm:text-xl [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                placeholder="Enter budget"
+                className={`${postTaskInput} border-0 bg-transparent py-4 pl-2 pr-5 font-formula text-xl font-bold shadow-none focus:ring-0 sm:py-5 sm:text-2xl [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+                placeholder="Enter amount"
                 value={data.budgetAmount || ''}
                 onBlur={() => setIsTouched(true)}
+                onWheel={(e) => e.currentTarget.blur()}
                 onChange={(e) => updateData({ budgetAmount: Number(e.target.value) })}
               />
             </div>
           </div>
 
           {isInvalid && (
-            <p className="mt-3 text-[14px] font-bold text-[#ff4d00]">
+            <p className={postTaskErrorText}>
               {error || `The price must be between ${formatNPR(min)} and ${formatNPR(max)}`}
             </p>
           )}

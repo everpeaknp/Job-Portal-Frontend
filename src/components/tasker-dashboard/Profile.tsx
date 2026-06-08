@@ -18,12 +18,41 @@ import {
   Loader2,
   AtSign,
   Lock,
+  Check,
+  X,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store';
 import { userService } from '@/services';
 import { toast } from 'sonner';
+import {
+  landingBody,
+  landingBodyMuted,
+  landingHeadline,
+  landingHeadlineSm,
+} from '@/components/LangingHome/landingTypography';
+
+const PROFILE_TYPO = `${landingBody} [&_h1]:font-formula [&_h1]:font-black [&_h1]:tracking-tight [&_h2]:font-formula [&_h2]:font-extrabold [&_h2]:tracking-tight [&_h3]:font-formula [&_h3]:font-bold [&_h3]:tracking-tight`;
+
+type SectionId = 'identity' | 'about' | 'goal';
+
+const SECTION_NAV: {
+  id: SectionId;
+  label: string;
+  description: string;
+  icon: typeof UserIcon;
+}[] = [
+  { id: 'identity', label: 'Identity', icon: UserIcon, description: 'Name, location & contact' },
+  { id: 'about', label: 'About', icon: Info, description: 'Bio & introduction' },
+  { id: 'goal', label: 'Your goal', icon: Target, description: 'How you use TaskNepal' },
+];
+
+const inputClass =
+  'w-full rounded-2xl border border-outline-variant bg-white px-4 py-3.5 text-sm font-medium text-[#000d45] outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/10';
+const inputDisabledClass =
+  'w-full cursor-not-allowed rounded-2xl border border-outline-variant bg-surface-low px-4 py-3.5 text-sm font-medium text-[#6a719a] outline-none';
 const CITY_MAX_LENGTH = 100;
 const USERNAME_MIN_LENGTH = 3;
 const USERNAME_MAX_LENGTH = 150;
@@ -88,6 +117,7 @@ export default function Profile() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [activeSection, setActiveSection] = useState<SectionId>('identity');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -130,6 +160,76 @@ export default function Profile() {
   const publicProfileHref = publicProfileSlug
     ? `/users/${encodeURIComponent(publicProfileSlug)}`
     : null;
+
+  const profileCompletion = useMemo(() => {
+    const checks = [
+      profile.firstName.trim(),
+      profile.lastName.trim(),
+      profile.location.trim(),
+      profile.username.trim(),
+      profile.about.trim(),
+      profile.birthday,
+      profile.profileImage && !profile.profileImage.includes('unsplash.com')
+        ? profile.profileImage
+        : '',
+    ];
+    const filled = checks.filter(Boolean).length;
+    return {
+      filled,
+      total: checks.length,
+      percent: Math.round((filled / checks.length) * 100),
+    };
+  }, [profile]);
+
+  const sectionCounts = useMemo(
+    () => ({
+      identity: [
+        profile.firstName.trim(),
+        profile.lastName.trim(),
+        profile.location.trim(),
+        profile.username.trim(),
+        profile.birthday,
+      ].filter(Boolean).length,
+      about: profile.about.trim() ? 1 : 0,
+      goal: 1,
+    }),
+    [profile],
+  );
+
+  const scrollToSection = useCallback((id: SectionId) => {
+    setActiveSection(id);
+    document.getElementById(`profile-section-${id}`)?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  }, []);
+
+  useEffect(() => {
+    if (loading) return;
+
+    const sectionIds = SECTION_NAV.map((s) => `profile-section-${s.id}`);
+    const elements = sectionIds
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => el !== null);
+
+    if (elements.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        if (visible[0]?.target.id) {
+          const id = visible[0].target.id.replace('profile-section-', '') as SectionId;
+          setActiveSection(id);
+        }
+      },
+      { rootMargin: '-20% 0px -55% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] },
+    );
+
+    elements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [loading]);
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -336,141 +436,317 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className={cn(PROFILE_TYPO, 'max-w-5xl space-y-8 pb-20')}>
+        <div className="h-24 rounded-[28px] bg-surface-low" />
+        <div className="grid gap-8 lg:grid-cols-12">
+          <div className="space-y-4 lg:col-span-4">
+            <div className="h-72 rounded-[28px] bg-surface-low" />
+            <div className="h-56 rounded-[28px] bg-surface-low" />
+          </div>
+          <div className="space-y-6 lg:col-span-8">
+            <div className="h-96 rounded-[32px] bg-surface-low" />
+            <div className="h-48 rounded-[32px] bg-surface-low" />
+          </div>
+        </div>
       </div>
     );
   }
 
+  const displayName =
+    [profile.firstName, profile.lastName].filter(Boolean).join(' ') || 'Your profile';
+
   return (
-    <motion.div 
-      initial={{ opacity: 0, x: 20 }}
+    <motion.div
+      initial={{ opacity: 0, x: 16 }}
       animate={{ opacity: 1, x: 0 }}
-      className="max-w-4xl space-y-12 pb-20"
+      className={cn(PROFILE_TYPO, 'max-w-5xl space-y-8 pb-20')}
     >
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-black uppercase tracking-tighter text-blue-950 sm:text-4xl">Profile Settings</h1>
-          <p className="text-gray-500 mt-2">Manage your personal information and public presence.</p>
-        </div>
-        {publicProfileHref ? (
-          <Link
-            href={publicProfileHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 text-primary font-bold hover:underline transition-all"
+          <p
+            className={cn(
+              landingHeadlineSm,
+              'mb-2 text-[10px] uppercase tracking-[0.3em] text-primary',
+            )}
           >
-            View your public profile
-            <ExternalLink className="w-4 h-4" />
-          </Link>
-        ) : (
+            Public presence
+          </p>
+          <h1 className={cn(landingHeadline, 'text-2xl text-[#000d45] sm:text-4xl')}>
+            Your profile
+          </h1>
+          <p className={cn(landingBodyMuted, 'mt-2 max-w-xl text-sm leading-relaxed')}>
+            Manage how you appear to other members. A complete profile builds trust and helps you
+            win more tasks.
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-col gap-3 sm:items-end">
+          {publicProfileHref ? (
+            <Link
+              href={publicProfileHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                landingHeadlineSm,
+                'inline-flex items-center gap-2 text-sm text-primary transition hover:opacity-80',
+              )}
+            >
+              View public profile
+              <ExternalLink className="h-4 w-4" />
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() =>
+                toast.info('Save a username below to get a shareable public profile link.')
+              }
+              className={cn(
+                landingBodyMuted,
+                'inline-flex items-center gap-2 text-sm transition hover:text-[#000d45]',
+              )}
+            >
+              View public profile
+              <ExternalLink className="h-4 w-4" />
+            </button>
+          )}
           <button
             type="button"
-            onClick={() =>
-              toast.info('Save a username below to get a shareable public profile link.')
-            }
-            className="flex items-center gap-2 font-bold text-gray-400 transition-all"
+            onClick={handleSave}
+            disabled={saving}
+            className={cn(
+              landingBody,
+              'inline-flex items-center justify-center gap-2 rounded-2xl bg-[#1161fe] px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50',
+            )}
           >
-            View your public profile
-            <ExternalLink className="w-4 h-4" />
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Saving…
+              </>
+            ) : (
+              <>
+                <Check className="h-4 w-4" />
+                Save profile
+              </>
+            )}
           </button>
-        )}
+        </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-        {/* Left Column: Avatar */}
-        <div className="lg:col-span-4 space-y-6 flex flex-col items-center lg:items-start">
-          <div className="relative group">
-            <div className="h-32 w-32 overflow-hidden rounded-[32px] border-4 border-white bg-gray-100 shadow-2xl sm:h-48 sm:w-48 sm:rounded-[40px]">
-              <img 
-                src={profile.profileImage} 
-                alt="Profile" 
-                className="w-full h-full object-cover transition-transform group-hover:scale-110"
-              />
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
+        <aside className="lg:col-span-4">
+          <div className="space-y-4 lg:sticky lg:top-24">
+            <div className="rounded-[28px] border border-outline-variant bg-white p-6 shadow-sm">
+              <div className="flex flex-col items-center text-center">
+                <div className="relative group">
+                  <div className="h-28 w-28 overflow-hidden rounded-[24px] border-4 border-white bg-surface-low shadow-md sm:h-32 sm:w-32">
+                    <img
+                      src={profile.profileImage}
+                      alt="Profile"
+                      className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                    />
+                  </div>
+                  <input
+                    type="file"
+                    className="hidden"
+                    ref={fileInputRef}
+                    onChange={handleImageChange}
+                    accept="image/*"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={saving}
+                    className="absolute -bottom-2 -right-2 rounded-2xl bg-primary p-3 text-white shadow-lg transition hover:scale-105 active:scale-95 disabled:opacity-50"
+                  >
+                    <Camera className="h-5 w-5" />
+                  </button>
+                </div>
+                <h2 className={cn(landingHeadline, 'mt-4 text-lg text-[#000d45]')}>
+                  {displayName}
+                </h2>
+                <p className={cn(landingBodyMuted, 'mt-1 text-sm')}>{profile.email}</p>
+                {profile.location ? (
+                  <p className={cn(landingBody, 'mt-1 flex items-center justify-center gap-1 text-xs text-[#000d45]')}>
+                    <MapPin className="h-3.5 w-3.5 text-primary" />
+                    {profile.location}
+                  </p>
+                ) : null}
+                <p className={cn(landingBodyMuted, 'mt-4 text-xs leading-relaxed')}>
+                  JPG, PNG or GIF · max 5MB
+                </p>
+              </div>
             </div>
-            <input 
-              type="file" 
-              className="hidden" 
-              ref={fileInputRef} 
-              onChange={handleImageChange}
-              accept="image/*"
-            />
-            <button 
-              onClick={() => fileInputRef.current?.click()}
-              className="absolute -bottom-2 -right-2 p-4 bg-primary text-white rounded-3xl shadow-xl hover:scale-110 active:scale-95 transition-all"
+
+            <div className="rounded-[28px] border border-outline-variant bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <p
+                    className={cn(
+                      landingHeadlineSm,
+                      'text-[10px] uppercase tracking-[0.2em] text-[#6a719a]',
+                    )}
+                  >
+                    Profile strength
+                  </p>
+                  <p className={cn(landingHeadline, 'mt-1 text-2xl text-[#000d45]')}>
+                    {profileCompletion.percent}%
+                  </p>
+                </div>
+                <div
+                  className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"
+                  aria-hidden
+                >
+                  <UserIcon className="h-6 w-6" />
+                </div>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-surface-low">
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-500"
+                  style={{ width: `${profileCompletion.percent}%` }}
+                />
+              </div>
+              <p className={cn(landingBodyMuted, 'mt-3 text-xs')}>
+                {profileCompletion.filled} of {profileCompletion.total} fields completed
+              </p>
+            </div>
+
+            <nav
+              className="rounded-[28px] border border-outline-variant bg-white p-3 shadow-sm"
+              aria-label="Profile sections"
             >
-              <Camera className="w-6 h-6" />
-            </button>
+              <ul className="space-y-1">
+                {SECTION_NAV.map((item) => {
+                  const Icon = item.icon;
+                  const count = sectionCounts[item.id];
+                  const max = item.id === 'identity' ? 5 : 1;
+                  const isActive = activeSection === item.id;
+
+                  return (
+                    <li key={item.id}>
+                      <button
+                        type="button"
+                        onClick={() => scrollToSection(item.id)}
+                        className={cn(
+                          'flex w-full min-h-[48px] items-center gap-3 rounded-2xl px-4 py-3 text-left transition-all',
+                          isActive
+                            ? 'bg-primary text-white shadow-md shadow-primary/20'
+                            : 'text-[#000d45] hover:bg-surface-low',
+                        )}
+                      >
+                        <Icon
+                          className={cn(
+                            'h-4 w-4 shrink-0',
+                            isActive ? 'text-white' : 'text-primary',
+                          )}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className={cn(landingHeadlineSm, 'block text-sm')}>
+                            {item.label}
+                          </span>
+                          <span
+                            className={cn(
+                              landingBody,
+                              'block text-xs font-medium',
+                              isActive ? 'text-white/80' : 'text-[#6a719a]',
+                            )}
+                          >
+                            {item.description}
+                          </span>
+                        </span>
+                        <span
+                          className={cn(
+                            landingHeadlineSm,
+                            'rounded-full px-2 py-0.5 text-xs',
+                            isActive ? 'bg-white/20 text-white' : 'bg-surface-low text-[#6a719a]',
+                          )}
+                        >
+                          {count}/{max}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </nav>
           </div>
+        </aside>
 
-          <div className="text-center lg:text-left space-y-2">
-            <h3 className="font-black text-blue-950 uppercase tracking-tight">Upload photo</h3>
-            <p className="text-xs text-gray-400 font-bold leading-relaxed uppercase tracking-widest">
-              JPG, PNG or GIF.<br />Max size 5MB.
-            </p>
-          </div>
-        </div>
+        <div className="space-y-6 lg:col-span-8">
+          <section
+            id="profile-section-identity"
+            className="scroll-mt-28 rounded-[32px] border border-outline-variant bg-white p-6 shadow-sm sm:p-8"
+          >
+            <div className="mb-6 flex items-start gap-4">
+              <div className="rounded-2xl bg-primary/10 p-3 text-primary">
+                <UserIcon className="h-6 w-6" />
+              </div>
+              <div>
+                <h2 className={cn(landingHeadline, 'text-xl text-[#000d45]')}>Identity details</h2>
+                <p className={cn(landingBodyMuted, 'mt-1 text-sm')}>
+                  Your name, location, and how members can find you.
+                </p>
+              </div>
+            </div>
 
-        {/* Right Column: Form */}
-        <div className="lg:col-span-8 space-y-10">
-          <section className="space-y-6">
-            <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.3em] flex items-center gap-2">
-              <UserIcon className="w-4 h-4" />
-              Identity Details
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-sm font-bold text-blue-950 ml-1">First name*</label>
-                <input 
-                  type="text" 
+                <label className={cn(landingHeadlineSm, 'text-sm text-[#000d45]')}>
+                  First name <span className="text-primary">*</span>
+                </label>
+                <input
+                  type="text"
                   name="firstName"
-                  value={profile.firstName} 
+                  value={profile.firstName}
                   onChange={handleChange}
-                  className="w-full p-4 bg-white border border-outline-variant rounded-2xl focus:ring-2 focus:ring-primary outline-none font-semibold transition-all" 
+                  className={inputClass}
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-bold text-blue-950 ml-1">Last name*</label>
-                <input 
-                  type="text" 
+                <label className={cn(landingHeadlineSm, 'text-sm text-[#000d45]')}>
+                  Last name <span className="text-primary">*</span>
+                </label>
+                <input
+                  type="text"
                   name="lastName"
-                  value={profile.lastName} 
+                  value={profile.lastName}
                   onChange={handleChange}
-                  className="w-full p-4 bg-white border border-outline-variant rounded-2xl focus:ring-2 focus:ring-primary outline-none font-semibold transition-all" 
+                  className={inputClass}
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-bold text-blue-950 ml-1">Location</label>
+                <label className={cn(landingHeadlineSm, 'text-sm text-[#000d45]')}>Location</label>
                 <div className="relative">
-                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input 
-                    type="text" 
+                  <MapPin className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6a719a]" />
+                  <input
+                    type="text"
                     name="location"
-                    value={profile.location} 
+                    value={profile.location}
                     onChange={handleChange}
                     maxLength={500}
                     placeholder="City or suburb"
-                    className="w-full pl-12 pr-4 py-4 bg-white border border-outline-variant rounded-2xl focus:ring-2 focus:ring-primary outline-none font-semibold transition-all" 
+                    className={cn(inputClass, 'pl-11')}
                   />
                 </div>
-                <p className="text-xs text-on-surface-variant ml-1">
-                  City or suburb (max {CITY_MAX_LENGTH} characters). Longer text is saved as your street address.
+                <p className={cn(landingBodyMuted, 'text-xs')}>
+                  City or suburb (max {CITY_MAX_LENGTH} characters). Longer text is saved as your
+                  street address.
                 </p>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-bold text-blue-950 ml-1 flex items-center gap-2">
+                <label
+                  className={cn(landingHeadlineSm, 'flex items-center gap-2 text-sm text-[#000d45]')}
+                >
                   Email
-                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-surface-low px-2 py-0.5 text-[10px] font-medium text-[#6a719a]">
                     <Lock className="h-3 w-3" />
                     Read only
                   </span>
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6a719a]" />
                   <input
                     type="email"
                     name="email"
@@ -478,10 +754,10 @@ export default function Profile() {
                     readOnly
                     disabled
                     autoComplete="email"
-                    className="w-full cursor-not-allowed bg-slate-50 pl-12 pr-4 py-4 border border-outline-variant rounded-2xl outline-none font-semibold text-slate-600 transition-all"
+                    className={cn(inputDisabledClass, 'pl-11')}
                   />
                 </div>
-                <p className="text-xs text-on-surface-variant ml-1">
+                <p className={cn(landingBodyMuted, 'text-xs')}>
                   To change your email, go to{' '}
                   <Link
                     href="/tasker-dashboard/settings?tab=email"
@@ -494,32 +770,34 @@ export default function Profile() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-bold text-blue-950 ml-1">PAN Number</label>
+                <label className={cn(landingHeadlineSm, 'text-sm text-[#000d45]')}>PAN number</label>
                 <div className="relative">
-                  <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input 
-                    type="text" 
+                  <CreditCard className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6a719a]" />
+                  <input
+                    type="text"
                     name="panNumber"
-                    value={profile.panNumber} 
+                    value={profile.panNumber}
                     onChange={handleChange}
-                    placeholder="Enter your PAN number" 
-                    className="w-full pl-12 pr-4 py-4 bg-white border border-outline-variant rounded-2xl focus:ring-2 focus:ring-primary outline-none font-semibold transition-all uppercase" 
+                    placeholder="Enter your PAN number"
+                    className={cn(inputClass, 'pl-11 uppercase')}
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-bold text-blue-950 ml-1 flex items-center gap-2">
+                <label
+                  className={cn(landingHeadlineSm, 'flex items-center gap-2 text-sm text-[#000d45]')}
+                >
                   Username
                   {!usernameCanChange ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800">
                       <Lock className="h-3 w-3" />
                       Locked
                     </span>
                   ) : null}
                 </label>
                 <div className="relative">
-                  <AtSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <AtSign className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6a719a]" />
                   <input
                     type="text"
                     name="username"
@@ -530,24 +808,23 @@ export default function Profile() {
                     placeholder="yourname"
                     disabled={!usernameCanChange}
                     readOnly={!usernameCanChange}
-                    className={`w-full pl-12 pr-4 py-4 border border-outline-variant rounded-2xl outline-none font-semibold transition-all lowercase ${
-                      usernameCanChange
-                        ? 'bg-white focus:ring-2 focus:ring-primary'
-                        : 'cursor-not-allowed bg-slate-50 text-slate-600'
-                    }`}
+                    className={cn(
+                      usernameCanChange ? inputClass : inputDisabledClass,
+                      'pl-11 lowercase',
+                    )}
                   />
                 </div>
                 {!usernameCanChange && usernameNextChangeLabel ? (
-                  <p className="text-xs font-medium text-amber-800 ml-1">
-                    Usernames can be changed once every 6 months. You can update yours again on{' '}
+                  <p className="text-xs font-medium text-amber-800">
+                    Usernames can be changed once every 6 months. Next change:{' '}
                     {usernameNextChangeLabel}.
                   </p>
                 ) : (
-                  <p className="text-xs text-on-surface-variant ml-1">
+                  <p className={cn(landingBodyMuted, 'text-xs')}>
                     You can change your username once every 6 months.
                   </p>
                 )}
-                <p className="text-xs text-on-surface-variant ml-1">
+                <p className={cn(landingBodyMuted, 'text-xs')}>
                   Public profile:{' '}
                   {profile.username.trim() ? (
                     <Link
@@ -563,112 +840,162 @@ export default function Profile() {
                   )}
                 </p>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-blue-950 ml-1 flex items-center gap-2">
-                <Cake className="w-4 h-4 text-gray-400" />
-                Birthday
-              </label>
-              <input 
-                type="date" 
-                name="birthday"
-                value={profile.birthday}
-                onChange={handleChange}
-                className="w-full p-4 bg-white border border-outline-variant rounded-2xl focus:ring-2 focus:ring-primary outline-none font-semibold transition-all" 
-              />
+              <div className="space-y-2 md:col-span-2">
+                <label
+                  className={cn(landingHeadlineSm, 'flex items-center gap-2 text-sm text-[#000d45]')}
+                >
+                  <Cake className="h-4 w-4 text-primary" />
+                  Birthday
+                </label>
+                <input
+                  type="date"
+                  name="birthday"
+                  value={profile.birthday}
+                  onChange={handleChange}
+                  className={inputClass}
+                />
+              </div>
             </div>
           </section>
 
-          <section className="space-y-6 pt-6 border-t border-gray-50">
-            <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.3em] flex items-center gap-2">
-              <Info className="w-4 h-4" />
-              About me
-            </h3>
-            <textarea 
+          <section
+            id="profile-section-about"
+            className="scroll-mt-28 rounded-[32px] border border-outline-variant bg-white p-6 shadow-sm sm:p-8"
+          >
+            <div className="mb-6 flex items-start gap-4">
+              <div className="rounded-2xl bg-primary/10 p-3 text-primary">
+                <Info className="h-6 w-6" />
+              </div>
+              <div>
+                <h2 className={cn(landingHeadline, 'text-xl text-[#000d45]')}>About me</h2>
+                <p className={cn(landingBodyMuted, 'mt-1 text-sm')}>
+                  A short bio helps customers understand your experience and style.
+                </p>
+              </div>
+            </div>
+            <textarea
               name="about"
               value={profile.about}
               onChange={handleChange}
-              placeholder="Tell other users about yourself..." 
-              rows={4}
-              className="w-full p-4 bg-white border border-outline-variant rounded-3xl focus:ring-2 focus:ring-primary outline-none font-medium transition-all"
+              placeholder="Tell other users about yourself, your experience, and what you're great at…"
+              rows={5}
+              className={cn(inputClass, 'resize-y min-h-[120px]')}
             />
           </section>
 
-          <section className="space-y-6 pt-6 border-t border-gray-50">
-            <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.3em] flex items-center gap-2">
-              <Target className="w-4 h-4" />
-              What is your main goal on tasknepal?
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <section
+            id="profile-section-goal"
+            className="scroll-mt-28 rounded-[32px] border border-outline-variant bg-white p-6 shadow-sm sm:p-8"
+          >
+            <div className="mb-6 flex items-start gap-4">
+              <div className="rounded-2xl bg-primary/10 p-3 text-primary">
+                <Target className="h-6 w-6" />
+              </div>
+              <div>
+                <h2 className={cn(landingHeadline, 'text-xl text-[#000d45]')}>Your goal</h2>
+                <p className={cn(landingBodyMuted, 'mt-1 text-sm')}>
+                  What brings you to TaskNepal?
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {[
                 { id: 'done', label: 'Get things done', icon: CheckCircle },
-                { id: 'earn', label: 'Earn money', icon: DollarSign }
-              ].map((option) => (
-                <button
-                  key={option.id}
-                  onClick={() => updateProfile({ goal: option.id as any })}
-                  className={`p-6 rounded-3xl border-2 transition-all flex flex-col items-center gap-3 ${
-                    profile.goal === option.id 
-                      ? 'border-[#162556] bg-[#162556] text-white' 
-                      : 'border-outline-variant bg-white text-gray-400 hover:border-gray-300'
-                  }`}
-                >
-                  <option.icon className={`w-8 h-8 ${profile.goal === option.id ? 'text-white' : 'text-gray-300'}`} />
-                  <span className="font-black uppercase tracking-tight">{option.label}</span>
-                </button>
-              ))}
+                { id: 'earn', label: 'Earn money', icon: DollarSign },
+              ].map((option) => {
+                const selected = profile.goal === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => updateProfile({ goal: option.id as UserProfile['goal'] })}
+                    className={cn(
+                      'flex flex-col items-center gap-3 rounded-2xl border-2 p-6 transition-all',
+                      selected
+                        ? 'border-[#162556] bg-[#162556] text-white'
+                        : 'border-outline-variant bg-white text-gray-400 hover:border-gray-300',
+                    )}
+                  >
+                    <option.icon
+                      className={cn('h-8 w-8', selected ? 'text-white' : 'text-gray-300')}
+                    />
+                    <span className={cn(landingHeadlineSm, 'text-sm')}>{option.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </section>
 
-          <div className="pt-10 flex flex-col sm:flex-row items-center justify-between gap-6 border-t border-gray-100">
-            <button 
+          <div className="flex flex-col items-stretch justify-between gap-4 rounded-[32px] border border-outline-variant bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:p-8">
+            <button
+              type="button"
               onClick={handleSave}
               disabled={saving}
-              className="w-full sm:w-auto bg-[#1161fe] text-white px-12 py-4 rounded-3xl font-black uppercase tracking-widest hover:opacity-90 shadow-xl shadow-primary/20 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className={cn(
+                landingBody,
+                'inline-flex items-center justify-center gap-2 rounded-2xl bg-[#1161fe] px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50',
+              )}
             >
               {saving ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Saving...
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving…
                 </>
               ) : (
-                'Save profile'
+                <>
+                  <Check className="h-4 w-4" />
+                  Save profile
+                </>
               )}
             </button>
-            <button 
+            <button
+              type="button"
               onClick={() => setShowDeleteDialog(true)}
-              className="flex items-center gap-2 text-red-500 font-bold hover:bg-red-50 px-6 py-3 rounded-2xl transition-all"
+              className={cn(
+                landingHeadlineSm,
+                'inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm text-red-600 transition hover:bg-red-50',
+              )}
             >
-              <Trash2 className="w-5 h-5" />
+              <Trash2 className="h-4 w-4" />
               Delete my account
             </button>
           </div>
         </div>
       </div>
 
-      {/* Delete Account Confirmation Dialog */}
       {showDeleteDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl p-8 max-w-md w-full space-y-6"
+            className="w-full max-w-md space-y-6 rounded-[28px] border border-outline-variant bg-white p-8 shadow-xl"
           >
-            <div className="text-center space-y-2">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-                <Trash2 className="w-8 h-8 text-red-500" />
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-500">
+                <Trash2 className="h-7 w-7" />
               </div>
-              <h3 className="text-2xl font-black text-blue-950 uppercase tracking-tight">
-                Delete Account?
-              </h3>
-              <p className="text-gray-600">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteDialog(false);
+                  setDeletePassword('');
+                }}
+                className="rounded-lg p-1 text-[#6a719a] transition hover:bg-surface-low"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-2">
+              <h3 className={cn(landingHeadline, 'text-xl text-[#000d45]')}>Delete account?</h3>
+              <p className={cn(landingBodyMuted, 'text-sm leading-relaxed')}>
                 This action cannot be undone. All your data will be permanently deleted.
               </p>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-bold text-blue-950 ml-1">
+              <label className={cn(landingHeadlineSm, 'text-sm text-[#000d45]')}>
                 Enter your password to confirm
               </label>
               <input
@@ -676,34 +1003,42 @@ export default function Profile() {
                 value={deletePassword}
                 onChange={(e) => setDeletePassword(e.target.value)}
                 placeholder="Enter password"
-                className="w-full p-4 bg-gray-50 border border-outline-variant rounded-2xl focus:ring-2 focus:ring-red-500 outline-none font-semibold transition-all"
+                className={cn(inputClass, 'focus:ring-red-500/20 focus:border-red-300')}
                 disabled={deleting}
               />
             </div>
 
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={() => {
                   setShowDeleteDialog(false);
                   setDeletePassword('');
                 }}
                 disabled={deleting}
-                className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-2xl font-bold hover:bg-gray-200 transition-all disabled:opacity-50"
+                className={cn(
+                  landingHeadlineSm,
+                  'flex-1 rounded-2xl bg-surface-low px-6 py-3 text-sm text-[#000d45] transition hover:bg-outline-variant/30 disabled:opacity-50',
+                )}
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleDeleteAccount}
                 disabled={deleting || !deletePassword.trim()}
-                className="flex-1 px-6 py-3 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className={cn(
+                  landingHeadlineSm,
+                  'flex flex-1 items-center justify-center gap-2 rounded-2xl bg-red-500 px-6 py-3 text-sm text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50',
+                )}
               >
                 {deleting ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Deleting...
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Deleting…
                   </>
                 ) : (
-                  'Delete Account'
+                  'Delete account'
                 )}
               </button>
             </div>

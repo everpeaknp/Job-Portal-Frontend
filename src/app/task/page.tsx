@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { SlidersHorizontal, MapPin } from 'lucide-react';
@@ -15,6 +15,11 @@ import TaskMapPreview from '@/components/task/TaskMapPreview';
 import TaskBrowseMobileSheet, {
   type BrowseSheetSnap,
 } from '@/components/task/TaskBrowseMobileSheet';
+import {
+  TaskAvatarListSkeleton,
+  TaskCardListSkeleton,
+  TaskMapSkeleton,
+} from '@/components/task/TaskBrowseSkeletons';
 import { useSidebar } from '@/hooks/useSidebar';
 import { useTaskStore } from '@/store';
 import { useAuth } from '@/hooks/useAuth';
@@ -23,18 +28,17 @@ import { getMediaUrl } from '@/lib/utils';
 import { filterAndSortTasks, taskBudgetAmount } from '@/lib/taskFilters';
 import { isCurrentUserTaskOwner } from '@/lib/taskUtils';
 import { formatTaskLocationShort } from '@/lib/nepalLocale';
+import {
+  DEFAULT_TASK_RADIUS_KM,
+  KATHMANDU_CENTER,
+  requestUserGeolocationDetailed,
+} from '@/lib/userGeolocation';
+import { getStraightDistanceLabel } from '@/hooks/useRoadDistanceLabel';
 
 // Dynamically import MapView to avoid SSR issues with Leaflet
 const MapView = dynamic(() => import('@/components/task/MapView'), {
   ssr: false,
-  loading: () => (
-    <div className="w-full h-full flex items-center justify-center bg-surface-dim">
-      <div className="text-center">
-        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-on-surface-variant font-semibold">Loading map...</p>
-      </div>
-    </div>
-  ),
+  loading: () => <TaskMapSkeleton />,
 });
 
 export default function App() {
@@ -59,10 +63,56 @@ export default function App() {
   const taskList = Array.isArray(tasks) ? tasks : [];
 
   const { user } = useAuth();
+  const radiusFilterInitialized = useRef(false);
 
   const { isSidebarVisible, setIsSidebarVisible, sidebarWidth, isResizing, setIsResizing, mainRef } = useSidebar();
 
   const safeFilters = filters ?? {};
+
+  // Default map view: zoom to 15km around user. Set fallback immediately, then refine with GPS.
+  useEffect(() => {
+    if (radiusFilterInitialized.current) return;
+    radiusFilterInitialized.current = true;
+
+    const prev = useTaskStore.getState().filters ?? {};
+    setFilters({
+      ...prev,
+      distance_km: DEFAULT_TASK_RADIUS_KM,
+      user_latitude: prev.user_latitude ?? KATHMANDU_CENTER.lat,
+      user_longitude: prev.user_longitude ?? KATHMANDU_CENTER.lng,
+      sort_by: prev.sort_by ?? 'closest',
+    });
+
+    (async () => {
+      const geo = await requestUserGeolocationDetailed();
+      if (geo.success) {
+        setFilters({
+          ...useTaskStore.getState().filters,
+          user_latitude: geo.lat,
+          user_longitude: geo.lng,
+        });
+        return;
+      }
+
+      const profileLat = user?.latitude != null ? Number(user.latitude) : NaN;
+      const profileLng = user?.longitude != null ? Number(user.longitude) : NaN;
+      if (Number.isFinite(profileLat) && Number.isFinite(profileLng)) {
+        setFilters({
+          ...useTaskStore.getState().filters,
+          user_latitude: profileLat,
+          user_longitude: profileLng,
+        });
+      }
+    })();
+  }, [setFilters, user?.latitude, user?.longitude]);
+
+  const userMapCenter = useMemo((): [number, number] | null => {
+    const lat = safeFilters.user_latitude;
+    const lng = safeFilters.user_longitude;
+    if (lat == null || lng == null) return null;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return [lat, lng];
+  }, [safeFilters.user_latitude, safeFilters.user_longitude]);
 
   const handleFilterChange = useCallback(
     (next: SearchFilters) => {
@@ -197,6 +247,7 @@ export default function App() {
         avatar: getMediaUrl(nested.profile_image),
         rating: nested.average_rating || 0,
         reviews: nested.total_reviews || 0,
+        verified: Boolean(nested.is_verified_tasker),
       };
     }
 
@@ -206,6 +257,7 @@ export default function App() {
       avatar: getMediaUrl(task.owner_image),
       rating: task.owner_rating || 0,
       reviews: 0,
+      verified: Boolean(task.owner_is_verified),
     };
   };
 
@@ -228,28 +280,6 @@ export default function App() {
       default:
         return status.replace(/_/g, ' ');
     }
-  };
-
-  // Convert Task to display format for TaskCard
-  const getTaskCardProps = (task: Task) => {
-    const poster = resolvePoster(task);
-    const offerCount = task.bid_count ?? task.bids_count ?? 0;
-
-    return {
-      title: task.title || 'Untitled Task',
-      status: task.status || 'open',
-      statusLabel: formatTaskStatusLabel(task.status || 'open'),
-      location: formatTaskLocationShort(task),
-      price: taskBudgetAmount(task),
-      dueDate: task.due_date ?? null,
-      timeLabel: task.flexible_date ? 'Anytime' : 'Anytime',
-      offerCount,
-      user: {
-        name: poster.name,
-        avatar: poster.avatar,
-        rating: poster.rating,
-      },
-    };
   };
 
   // A task is mappable only when it has REAL latitude/longitude.
@@ -277,6 +307,41 @@ export default function App() {
       // Treat (0,0) "Null Island" as missing data, not a real location.
       !(lat === 0 && lng === 0)
     );
+  };
+
+  const cardUserCenter = useMemo(
+    (): [number, number] =>
+      userMapCenter ?? [KATHMANDU_CENTER.lat, KATHMANDU_CENTER.lng],
+    [userMapCenter]
+  );
+
+  // Convert Task to display format for TaskCard
+  const getTaskCardProps = (task: Task) => {
+    const poster = resolvePoster(task);
+    const offerCount = task.bid_count ?? task.bids_count ?? 0;
+    const coordinates = hasValidCoordinates(task)
+      ? ([toCoord(task.latitude), toCoord(task.longitude)] as [number, number])
+      : null;
+
+    return {
+      title: task.title || 'Untitled Task',
+      status: task.status || 'open',
+      statusLabel: formatTaskStatusLabel(task.status || 'open'),
+      location: formatTaskLocationShort(task),
+      coordinates,
+      userCenter: cardUserCenter,
+      distanceLabel: getStraightDistanceLabel(cardUserCenter, coordinates),
+      price: taskBudgetAmount(task),
+      dueDate: task.due_date ?? null,
+      timeLabel: task.flexible_date ? 'Anytime' : 'Anytime',
+      offerCount,
+      user: {
+        name: poster.name,
+        avatar: poster.avatar,
+        rating: poster.rating,
+        verified: poster.verified,
+      },
+    };
   };
 
   // Convert API Task -> MapView Task format. Only tasks with real coords.
@@ -345,7 +410,8 @@ export default function App() {
         user: {
           name: posterName,
           avatar: posterAvatar,
-          rating: posterRating
+          rating: posterRating,
+          verified: poster.verified,
         }
       };
     });
@@ -385,9 +451,7 @@ export default function App() {
               // Compact view - Only profile pictures
               <div className="flex-1 overflow-y-auto py-6 scrollbar-thin scrollbar-thumb-outline-variant">
                 {isLoading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                  </div>
+                  <TaskAvatarListSkeleton />
                 ) : (
                   <div className="flex flex-col gap-4 items-center">
                     {filteredTaskList.map((task) => {
@@ -399,7 +463,7 @@ export default function App() {
                         <button
                           key={task.id}
                           onClick={() => handleViewTask(String(task.slug || task.id))}
-                          className={`w-12 h-12 rounded-full overflow-hidden border-2 transition-all hover:scale-110 ${
+                          className={`rounded-full border-2 transition-all hover:scale-110 ${
                             detailTaskId === (task.slug || task.id) ? 'border-primary shadow-lg' : 'border-outline-variant'
                           }`}
                           title={task.title}
@@ -409,7 +473,7 @@ export default function App() {
                             alt={poster.name}
                             name={poster.name}
                             size="md"
-                            className="w-full h-full border-0 rounded-none"
+                            verified={poster.verified}
                           />
                         </button>
                       );
@@ -421,10 +485,7 @@ export default function App() {
               // Full view - Task cards
               <div className="flex-1 overflow-y-auto px-10 py-6 scrollbar-thin scrollbar-thumb-outline-variant">
                 {isLoading ? (
-                  <div className="flex flex-col items-center justify-center h-full">
-                    <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-                    <p className="text-on-surface-variant font-semibold">Loading tasks...</p>
-                  </div>
+                  <TaskCardListSkeleton />
                 ) : (
                   <div className="flex flex-col gap-3 pb-2">
                     {filteredTaskList.length > 0 ? (
@@ -506,12 +567,27 @@ export default function App() {
                 sortBy={safeFilters.sort_by ?? 'newest'}
                 focusTaskId={focusedTaskId}
                 onTaskFocus={(id) => handleTaskFocus(String(id))}
+                userCenter={userMapCenter}
+                radiusKm={safeFilters.distance_km ?? DEFAULT_TASK_RADIUS_KM}
+                onUserLocationFound={(lat, lng) => {
+                  setFilters({
+                    ...useTaskStore.getState().filters,
+                    user_latitude: lat,
+                    user_longitude: lng,
+                    distance_km:
+                      useTaskStore.getState().filters?.distance_km ??
+                      DEFAULT_TASK_RADIUS_KM,
+                    sort_by:
+                      useTaskStore.getState().filters?.sort_by ?? 'closest',
+                  });
+                }}
               />
             </div>
 
             {previewMapTask && (
               <TaskMapPreview
                 task={previewMapTask}
+                userCenter={userMapCenter}
                 onClose={handleCloseMapPreview}
                 onViewTask={() => handleViewTask(String(previewMapTask.slug || previewMapTask.id))}
               />
@@ -525,10 +601,7 @@ export default function App() {
               hidden={Boolean(detailTask)}
             >
               {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                  <p className="font-semibold text-on-surface-variant">Loading tasks…</p>
-                </div>
+                <TaskCardListSkeleton count={4} />
               ) : filteredTaskList.length > 0 ? (
                 <div className="flex flex-col gap-3 pb-2">
                   {filteredTaskList.map((task, index) => {

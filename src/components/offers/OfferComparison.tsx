@@ -2,6 +2,7 @@
 
 import { Bid } from '@/types';
 import { X, CheckCircle, Clock, Calendar, Star, DollarSign } from 'lucide-react';
+import UserAvatar from '@/components/common/UserAvatar';
 
 interface OfferComparisonProps {
   offers: Bid[];
@@ -34,19 +35,12 @@ export function OfferComparison({ offers, onClose, onAccept }: OfferComparisonPr
           >
             {/* Tasker Info */}
             <div className="flex items-center gap-3 pb-4 border-b border-gray-200">
-              <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
-                {offer.tasker?.profile_image ? (
-                  <img
-                    src={offer.tasker.profile_image}
-                    alt={offer.tasker.full_name}
-                    className="h-12 w-12 rounded-full object-cover"
-                  />
-                ) : (
-                  <span className="text-lg font-semibold text-gray-600">
-                    {offer.tasker?.full_name?.charAt(0) || 'T'}
-                  </span>
-                )}
-              </div>
+              <UserAvatar
+                src={offer.tasker?.profile_image}
+                name={offer.tasker?.full_name || 'Tasker'}
+                size="lg"
+                verified={offer.tasker?.is_verified_tasker}
+              />
               <div>
                 <h4 className="font-semibold text-gray-900">
                   {offer.tasker?.full_name || 'Unknown'}

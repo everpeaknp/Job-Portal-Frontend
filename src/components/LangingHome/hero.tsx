@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { motion } from "motion/react";
 import { IMAGES } from "../constants";
-import { landingHeadline, landingHeadlineSm } from "./landingTypography";
+import { landingBody, landingBodyMuted, landingHeadline, landingHeadlineSm } from "./landingTypography";
 
 export default function Hero() {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-[#005fff] via-[#0047ff] to-[#03113c] pt-16 pb-12 text-white sm:pt-20 sm:pb-20 md:pb-24 lg:pb-28">
+    <section className="relative overflow-hidden bg-gradient-to-br from-[#005fff] via-[#0047ff] to-[#03113c] pt-16 pb-8 text-white sm:pb-10 md:pb-12">
       {/* Decorative background visual ambient circles and polygons (match Discover hero) */}
       <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-sky-400 via-indigo-500 to-transparent opacity-20" />
       <div className="pointer-events-none absolute top-1/4 right-0 hidden h-48 w-48 animate-pulse rounded-full bg-cyan-400 opacity-10 mix-blend-screen blur-3xl filter sm:block sm:h-64 sm:w-64" />
@@ -25,7 +25,7 @@ export default function Hero() {
               Get Anything Done
             </h1>
 
-            <p className="mt-4 max-w-xl text-sm leading-relaxed font-medium text-blue-100/90 sm:mt-5 sm:text-base md:text-lg">
+            <p className={`${landingBody} mt-4 max-w-xl text-sm leading-relaxed font-medium text-blue-100/90 sm:mt-5 sm:text-base md:text-lg`}>
               The ultimate marketplace to outsource tasks, find local services, and reclaim your time. From cleaning to coding, we've got you covered.
             </p>
 
@@ -40,13 +40,13 @@ export default function Hero() {
             <div className="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:flex-wrap sm:gap-4">
               <Link
                 href="/post-task"
-                className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-white px-6 py-3.5 text-center text-sm font-bold text-[#061257] shadow-xl shadow-black/10 transition-all hover:bg-white/95 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 sm:w-auto sm:px-8 sm:py-4 sm:text-base"
+                className={`${landingBody} inline-flex min-h-12 w-full items-center justify-center rounded-full bg-white px-6 py-3.5 text-center text-sm font-bold text-[#061257] shadow-xl shadow-black/10 transition-all hover:bg-white/95 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 sm:w-auto sm:px-8 sm:py-4 sm:text-base`}
               >
                 Post a task for free
               </Link>
               <Link
                 href="/signup?role=tasker"
-                className="inline-flex min-h-12 w-full items-center justify-center rounded-full border border-white/25 bg-transparent px-6 py-3.5 text-center text-sm font-bold text-white transition-all hover:bg-white/10 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/35 sm:w-auto sm:px-8 sm:py-4 sm:text-base"
+                className={`${landingBody} inline-flex min-h-12 w-full items-center justify-center rounded-full border border-white/25 bg-transparent px-6 py-3.5 text-center text-sm font-bold text-white transition-all hover:bg-white/10 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/35 sm:w-auto sm:px-8 sm:py-4 sm:text-base`}
               >
                 Earn money
               </Link>
@@ -68,7 +68,7 @@ export default function Hero() {
               />
               <div className="absolute bottom-3 left-3 rounded-xl bg-white px-3 py-2 shadow-2xl sm:-bottom-6 sm:left-6 sm:rounded-2xl sm:px-4 sm:py-3">
                 <p className={`${landingHeadlineSm} text-[10px] text-[#061257] sm:text-xs`}>100% Verified</p>
-                <p className="mt-0.5 text-[10px] font-medium text-[#6a719a] sm:text-[11px]">Trust & safety first</p>
+                <p className={`${landingBodyMuted} mt-0.5 text-[10px] sm:text-[11px]`}>Trust & safety first</p>
               </div>
             </div>
           </motion.div>

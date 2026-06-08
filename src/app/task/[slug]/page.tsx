@@ -1,20 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
-import { toast } from 'sonner';
 import Navbar from '@/components/common/navbar';
-import TaskDetails from '@/components/my-task/TaskDetails';
-import { useAuth } from '@/hooks/useAuth';
+import TaskDetails from '@/components/task/TaskDetails';
 import { taskService } from '@/services/task.service';
 import type { Task } from '@/types';
-import { transformApiTaskToMyTaskView } from '@/lib/myTaskDisplay';
 
 export default function TaskDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { user } = useAuth();
   const taskSlug = params.slug as string;
 
   const [apiTask, setApiTask] = useState<Task | null>(null);
@@ -51,16 +47,11 @@ export default function TaskDetailPage() {
     void loadTaskDetails();
   }, [loadTaskDetails]);
 
-  const displayTask = useMemo(
-    () => (apiTask ? transformApiTaskToMyTaskView(apiTask, user?.id) : null),
-    [apiTask, user?.id]
-  );
-
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col bg-white">
+      <div className="min-h-screen flex flex-col bg-slate-100">
         <Navbar />
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex-1 flex items-center justify-center px-4 sm:px-6">
           <div className="text-center">
             <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
             <p className="mt-4 text-on-surface-variant font-medium">Loading task…</p>
@@ -70,11 +61,11 @@ export default function TaskDetailPage() {
     );
   }
 
-  if (error || !apiTask || !displayTask) {
+  if (error || !apiTask) {
     return (
-      <div className="min-h-screen flex flex-col bg-white">
+      <div className="min-h-screen flex flex-col bg-slate-100">
         <Navbar />
-        <div className="flex-1 flex items-center justify-center px-4">
+        <div className="flex-1 flex items-center justify-center px-4 sm:px-6">
           <div className="max-w-md w-full text-center">
             <h2 className="text-2xl font-bold text-error mb-2">Task not found</h2>
             <p className="text-on-surface-variant mb-6">{error || 'This task may have been removed.'}</p>
@@ -93,19 +84,16 @@ export default function TaskDetailPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-slate-100">
       <Navbar />
-      <TaskDetails
-        variant="page"
-        task={displayTask}
-        apiTask={apiTask}
-        onClose={() => router.push('/task')}
-        onTaskUpdated={() => void loadTaskDetails()}
-        onTaskDeleted={() => {
-          toast.success('Task removed');
-          router.push('/my-tasks');
-        }}
-      />
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        <TaskDetails
+          variant="page"
+          task={apiTask}
+          onClose={() => router.push('/task')}
+          onTaskUpdated={() => void loadTaskDetails()}
+        />
+      </main>
     </div>
   );
 }

@@ -8,7 +8,7 @@ import { ARTICLES } from "../constants";
 import { blogService } from "@/services/blog.service";
 import type { BlogPost } from "@/types/blog";
 import { getBlogPostHref, isExternalBlogHref } from "@/lib/blog";
-import { landingHeadline, landingHeadlineSm } from "./landingTypography";
+import { landingBody, landingHeadline, landingHeadlineSm } from "./landingTypography";
 
 type ArticleCard = {
   id: string;
@@ -114,9 +114,9 @@ export default function BlogSection() {
     "bg-white rounded-3xl overflow-hidden border border-gray-100 transition-all group cursor-pointer block";
 
   return (
-    <section className="bg-[#E7F0FF] py-12 sm:py-16 md:py-24">
+    <section className="bg-[#E7F0FF] py-8 sm:py-10 md:py-12">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-8 flex flex-col gap-4 sm:mb-12 sm:flex-row sm:items-end sm:justify-between">
+        <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
           <h2
             className={`${landingHeadline} text-2xl uppercase italic text-[#0b1442] text-balance sm:text-4xl md:text-5xl`}
           >
@@ -124,7 +124,7 @@ export default function BlogSection() {
           </h2>
           <Link
             href="/blog"
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-[#1161fe] px-6 py-3 text-sm font-semibold text-white transition-all hover:scale-105 sm:w-auto sm:px-8"
+            className={`${landingBody} inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-[#1161fe] px-6 py-3 text-sm font-semibold text-white transition-all hover:scale-105 sm:w-auto sm:px-8`}
           >
             View all articles <ChevronRight size={18} />
           </Link>
@@ -147,7 +147,7 @@ export default function BlogSection() {
                     />
                   </div>
                   <div className="p-5 sm:p-8">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#1161fe]">
+                    <span className={`${landingHeadlineSm} text-[10px] uppercase tracking-[0.2em] text-[#1161fe]`}>
                       {article.cat}
                     </span>
                     <h3
@@ -155,7 +155,7 @@ export default function BlogSection() {
                     >
                       {article.title}
                     </h3>
-                    <p className="text-[#384179] font-medium leading-relaxed text-sm opacity-90">
+                    <p className={`${landingBody} text-sm font-medium leading-relaxed text-[#384179] opacity-90`}>
                       {article.desc}
                     </p>
                   </div>

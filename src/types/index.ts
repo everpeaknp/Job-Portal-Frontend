@@ -349,6 +349,7 @@ export interface Task {
   owner_name?: string;
   owner_image?: string;
   owner_rating?: number;
+  owner_is_verified?: boolean;
   
   // Budget & Payment
   budget_type: 'fixed' | 'hourly';

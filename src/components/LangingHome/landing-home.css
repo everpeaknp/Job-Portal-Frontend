@@ -27,3 +27,18 @@
   font-style: normal;
   font-display: swap;
 }
+
+/* Home + discover: Manrope body, Outfit/PP Formula headlines */
+.landing-page,
+.discover-page {
+  font-family: var(--font-stack-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.landing-page :where(h1, h2, h3, h4),
+.discover-page :where(h1, h2, h3, h4),
+.landing-page .font-formula,
+.discover-page .font-formula {
+  font-family: var(--font-stack-formula);
+}

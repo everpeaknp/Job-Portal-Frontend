@@ -22,6 +22,7 @@ import TaskBrowseMobileSheet, {
 import {
   type MyTasksFilterId,
   formatMyTaskStatusLabel,
+  formatTaskDisplayTitle,
   extractTaskList,
   mergeUserTasks,
   isUserInvolvedInMyTask,
@@ -38,18 +39,16 @@ import {
   resolvePoster,
   transformApiTaskToMyTaskView,
 } from '@/lib/myTaskDisplay';
+import {
+  TaskAvatarListSkeleton,
+  TaskCardListSkeleton,
+  TaskMapSkeleton,
+} from '@/components/task/TaskBrowseSkeletons';
 
 // Dynamically import MapView to avoid SSR issues with Leaflet
 const MapView = dynamic(() => import('@/components/my-task/MapView'), {
   ssr: false,
-  loading: () => (
-    <div className="w-full h-full flex items-center justify-center bg-surface-dim">
-      <div className="text-center">
-        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-on-surface-variant font-semibold">Loading map...</p>
-      </div>
-    </div>
-  ),
+  loading: () => <TaskMapSkeleton />,
 });
 
 const EMPTY_STATE_BY_FILTER: Partial<
@@ -85,7 +84,7 @@ export default function MyTasksPage() {
   const { user, isAuthenticated } = useAuth();
 
   const [userTasks, setUserTasks] = useState<Task[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({});
@@ -126,6 +125,7 @@ export default function MyTasksPage() {
         // error state + toast handled below
       });
     } else if (!isAuthenticated) {
+      setIsLoading(false);
       toast.error('Please sign in to view your tasks');
     }
   }, [isAuthenticated, user, loadUserTasks]);
@@ -188,12 +188,7 @@ export default function MyTasksPage() {
   // Convert Task to display format for TaskCard
   const renderTaskList = () => {
     if (isLoading) {
-      return (
-        <div className="flex flex-col items-center justify-center py-12">
-          <div className="mb-4 h-16 w-16 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <p className="font-semibold text-on-surface-variant">Loading your tasks…</p>
-        </div>
-      );
+      return <TaskCardListSkeleton />;
     }
 
     if (filteredTasks.length === 0) {
@@ -289,7 +284,7 @@ export default function MyTasksPage() {
     const canEdit = canEditMyPostedTask(task, user?.id);
     const canDelete = canDeleteMyPostedTask(task, user?.id);
     return {
-      title: task.title || 'Untitled Task',
+      title: formatTaskDisplayTitle(task.title || 'Untitled Task'),
       status: rawStatus,
       statusLabel: formatMyTaskStatusLabel(rawStatus),
       location: formatTaskLocationShort(task),
@@ -300,6 +295,7 @@ export default function MyTasksPage() {
         name: poster.name,
         avatar: poster.avatar,
         rating: poster.rating,
+        verified: poster.verified,
       },
       offerCount: getTaskBidCount(task),
       canEdit,
@@ -324,9 +320,7 @@ export default function MyTasksPage() {
               // Compact view - Only profile pictures
               <div className="flex-1 overflow-y-auto py-6 scrollbar-thin scrollbar-thumb-outline-variant">
                 {isLoading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                  </div>
+                  <TaskAvatarListSkeleton />
                 ) : (
                   <div className="flex flex-col gap-4 items-center">
                     {filteredTasks.map((task) => {
@@ -337,18 +331,17 @@ export default function MyTasksPage() {
                         <button
                           key={task.id}
                           onClick={() => handleSelectTask(taskId)}
-                          className={`rounded-full overflow-hidden border-2 transition-all hover:scale-110 ${
+                          className={`rounded-full border-2 transition-all hover:scale-110 ${
                             isSelected ? 'border-primary shadow-lg' : 'border-outline-variant'
                           }`}
-                          title={`${task.title} — ${poster.name}`}
+                          title={`${formatTaskDisplayTitle(task.title || 'Untitled Task')} — ${poster.name}`}
                         >
-                          {/* UserAvatar handles missing/broken images by
-                              showing the poster's initials instead. */}
                           <UserAvatar
                             src={poster.avatar}
                             alt={poster.name}
                             name={poster.name}
                             size="md"
+                            verified={poster.verified}
                           />
                         </button>
                       );

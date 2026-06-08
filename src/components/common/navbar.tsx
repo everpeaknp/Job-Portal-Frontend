@@ -11,15 +11,25 @@ import {
   LogOut,
   LayoutDashboard,
   Briefcase,
+  Bookmark,
 } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTaskerDashboardNavOptional } from '@/context/TaskerDashboardNavContext';
 import { useAuth } from '@/hooks/useAuth';
+import { cn } from '@/lib/utils';
 import { notificationService, taskService, chatService } from '@/services';
 import UserAvatar from '@/components/common/UserAvatar';
 import type { Conversation, Notification as NotificationType, PaginatedResponse } from '@/types';
+import { normalizeNotificationCurrency } from '@/lib/nepalLocale';
+import {
+  landingBody,
+  landingHeadline,
+  landingHeadlineSm,
+} from '@/components/LangingHome/landingTypography';
+
+const navPanelTitleClass = `${landingHeadlineSm} text-sm text-gray-900`;
 
 function extractList<T>(data: PaginatedResponse<T> | T[] | null | undefined): T[] {
   if (!data) return [];
@@ -339,6 +349,10 @@ export default function Navbar() {
     router.push('/task');
   };
 
+  const handleBrowseMembersClick = () => {
+    router.push('/users');
+  };
+
   const handleMyTasksClick = () => {
     if (!isAuthenticated) {
       router.push('/signin?redirect=/my-tasks');
@@ -346,6 +360,21 @@ export default function Navbar() {
     }
     router.push('/my-tasks');
   };
+
+  const isBrowseTasksActive =
+    pathname === '/task' ||
+    (pathname.startsWith('/task/') && !pathname.startsWith('/tasker-dashboard'));
+  const isBrowseMembersActive =
+    pathname === '/users' || pathname.startsWith('/users/');
+  const isMyTasksActive =
+    pathname === '/my-tasks' || pathname.startsWith('/my-tasks/');
+
+  const navLinkClass = (active: boolean) =>
+    cn(
+      landingBody,
+      'text-sm font-semibold tracking-tight transition cursor-pointer',
+      active ? 'text-[#005fff]' : 'text-[#3c4a6b] hover:text-[#005fff]'
+    );
 
   const formatTimeAgo = (dateString?: string) => {
     if (!dateString) return 'Just now';
@@ -361,7 +390,7 @@ export default function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-[9999] isolate w-full bg-white">
+    <header className={`sticky top-0 z-[9999] isolate w-full bg-white ${landingBody} antialiased`}>
       <div className="mx-auto flex h-14 min-h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:h-16 sm:gap-3 sm:px-4 md:px-6 lg:px-8">
         {/* Left section: Logo & Primary Links */}
         <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-8 md:flex-none">
@@ -369,7 +398,7 @@ export default function Navbar() {
             href={isAuthenticated ? '/discover' : '/'}
             className="flex shrink-0 items-center focus:outline-none cursor-pointer"
           >
-            <span className="text-lg font-black tracking-tight text-[#005fff] antialiased sm:text-2xl">
+            <span className={`${landingHeadline} text-lg text-[#005fff] sm:text-2xl`}>
               task<span className="text-[#03113c]">nepal</span>
             </span>
           </Link>
@@ -379,22 +408,26 @@ export default function Navbar() {
             <nav className="hidden md:flex items-center space-x-6">
               <button
                 onClick={handlePostTaskClick}
-                className="rounded-full bg-[#005fff] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0047ff] cursor-pointer inline-flex items-center gap-1.5 active:scale-95"
+                className={`${landingBody} rounded-full bg-[#005fff] px-4 py-2 text-sm font-semibold tracking-tight text-white transition hover:bg-[#0047ff] cursor-pointer inline-flex items-center gap-1.5 active:scale-95`}
               >
                 <PlusCircle className="h-4 w-4" />
                 Post a task
               </button>
 
               <button
+                type="button"
                 onClick={handleBrowseTasksClick}
-                className="text-sm font-semibold transition cursor-pointer text-[#3c4a6b] hover:text-[#005fff]"
+                className={navLinkClass(isBrowseTasksActive)}
+                aria-current={isBrowseTasksActive ? 'page' : undefined}
               >
                 Browse tasks
               </button>
 
               <button
+                type="button"
                 onClick={handleMyTasksClick}
-                className="relative text-sm font-semibold transition cursor-pointer text-[#3c4a6b] hover:text-[#005fff]"
+                className={cn('relative', navLinkClass(isMyTasksActive))}
+                aria-current={isMyTasksActive ? 'page' : undefined}
               >
                 My tasks
                 {myTasksCount > 0 && !tasksLoading && (
@@ -402,6 +435,15 @@ export default function Navbar() {
                     {myTasksCount}
                   </span>
                 )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleBrowseMembersClick}
+                className={navLinkClass(isBrowseMembersActive)}
+                aria-current={isBrowseMembersActive ? 'page' : undefined}
+              >
+                Browse members
               </button>
             </nav>
           )}
@@ -413,13 +455,13 @@ export default function Navbar() {
             <div className="hidden items-center gap-3 sm:flex">
               <Link
                 href="/signin"
-                className="text-sm font-semibold text-[#3c4a6b] transition hover:text-[#005fff]"
+                className={`${landingBody} text-sm font-semibold tracking-tight text-[#3c4a6b] transition hover:text-[#005fff]`}
               >
                 Sign in
               </Link>
               <Link
                 href="/signup"
-                className="rounded-full bg-[#005fff] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0047ff]"
+                className={`${landingBody} rounded-full bg-[#005fff] px-4 py-2 text-sm font-semibold tracking-tight text-white transition hover:bg-[#0047ff]`}
               >
                 Sign up
               </Link>
@@ -427,7 +469,7 @@ export default function Navbar() {
           ) : (
             <>
               {/* Help button */}
-              <div className="hidden lg:flex items-center cursor-pointer space-x-1 text-sm font-medium text-[#3c4a6b] hover:text-[#005fff]">
+              <div className={`${landingBody} hidden lg:flex items-center cursor-pointer space-x-1 text-sm font-medium tracking-tight text-[#3c4a6b] hover:text-[#005fff]`}>
                 <HelpCircle className="h-4.5 w-4.5" />
                 <span>Help</span>
               </div>
@@ -461,7 +503,7 @@ export default function Navbar() {
                     <MobileDropdownBackdrop onClose={() => setNotificationsOpen(false)} />
                     <div className={mobileDropdownPanelClass}>
                     <div className="flex items-center justify-between pb-2 mb-2">
-                      <h4 className="text-sm font-bold text-gray-900">Notifications</h4>
+                      <h4 className={navPanelTitleClass}>Notifications</h4>
                       <div className="flex items-center gap-1">
                         {unreadCount > 0 && (
                           <button
@@ -498,7 +540,9 @@ export default function Navbar() {
                               <span className="text-xs font-semibold text-gray-900">{n.title}</span>
                               <span className="shrink-0 text-[10px] text-gray-500">{formatTimeAgo(n.created_at)}</span>
                             </div>
-                            <p className="text-xs text-gray-600 mt-1 leading-snug line-clamp-3">{n.message}</p>
+                            <p className="text-xs text-gray-600 mt-1 leading-snug line-clamp-3">
+                              {normalizeNotificationCurrency(n.message)}
+                            </p>
                           </div>
                         ))
                       )}
@@ -534,7 +578,7 @@ export default function Navbar() {
                     <MobileDropdownBackdrop onClose={() => setMessagesOpen(false)} />
                     <div className={mobileDropdownPanelClass}>
                     <div className="flex items-center justify-between pb-2 mb-2">
-                      <h4 className="text-sm font-bold text-gray-900">Recent Chats</h4>
+                      <h4 className={navPanelTitleClass}>Recent Chats</h4>
                       <button
                         onClick={() => setMessagesOpen(false)}
                         className="p-1 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 cursor-pointer"
@@ -571,6 +615,12 @@ export default function Navbar() {
                                   src={avatar}
                                   name={name}
                                   size="md"
+                                  verified={
+                                    conv.other_participant?.is_verified_tasker ||
+                                    conv.participants?.find(
+                                      (p) => String(p.id) !== String(user?.id)
+                                    )?.is_verified_tasker
+                                  }
                                   className="shrink-0"
                                 />
                                 <div className="flex-1 min-w-0">
@@ -626,6 +676,7 @@ export default function Navbar() {
                     src={user?.profile_image}
                     name={user ? `${user.first_name} ${user.last_name}` : 'User'}
                     size="sm"
+                    verified={user?.is_verified_tasker}
                     className="transition cursor-pointer sm:!w-10 sm:!h-10"
                   />
                 </button>
@@ -635,7 +686,7 @@ export default function Navbar() {
                   <div className="absolute right-0 mt-3 hidden w-64 rounded-2xl bg-white p-2 animate-in fade-in slide-in-from-top-3 duration-200 md:block z-[10000]">
                     {/* User Info */}
                     <div className="px-3 py-3">
-                      <p className="text-sm font-bold text-gray-900">
+                      <p className={`${landingHeadlineSm} text-sm text-gray-900`}>
                         {user?.first_name} {user?.last_name}
                       </p>
                       <p className="text-xs text-gray-500 mt-0.5">{user?.email}</p>
@@ -663,6 +714,17 @@ export default function Navbar() {
                       >
                         <Briefcase className="h-4 w-4 text-gray-400" />
                         <span>My Tasks</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setProfileMenuOpen(false);
+                          router.push('/bookmarks');
+                        }}
+                        className="w-full flex items-center space-x-3 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition cursor-pointer"
+                      >
+                        <Bookmark className="h-4 w-4 text-gray-400" />
+                        <span>My bookmarks</span>
                       </button>
 
                       <button
@@ -756,14 +818,14 @@ export default function Navbar() {
             <Link
               href="/signin"
               onClick={() => setMobileMenuOpen(false)}
-              className="block w-full min-h-11 rounded-full py-3 text-center text-sm font-semibold text-[#3c4a6b] transition hover:bg-gray-50"
+              className={`${landingBody} block w-full min-h-11 rounded-full py-3 text-center text-sm font-semibold tracking-tight text-[#3c4a6b] transition hover:bg-gray-50`}
             >
               Sign in
             </Link>
             <Link
               href="/signup"
               onClick={() => setMobileMenuOpen(false)}
-              className="block w-full min-h-11 rounded-full bg-[#005fff] py-3 text-center text-sm font-semibold text-white transition hover:bg-[#0047ff]"
+              className={`${landingBody} block w-full min-h-11 rounded-full bg-[#005fff] py-3 text-center text-sm font-semibold tracking-tight text-white transition hover:bg-[#0047ff]`}
             >
               Sign up
             </Link>

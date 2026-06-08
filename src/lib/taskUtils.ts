@@ -46,6 +46,18 @@ export function formatMyTaskStatusLabel(status: string): string {
   }
 }
 
+/** Strip seed-script suffixes like " (458)" from titles shown in the UI. */
+export function formatTaskDisplayTitle(title: string): string {
+  if (!title) return title;
+  return title.replace(/\s+\(\d+\)\s*$/, '').trim();
+}
+
+export function normalizeTaskForDisplay<T extends { title?: string | null }>(task: T): T {
+  if (!task.title) return task;
+  const cleaned = formatTaskDisplayTitle(task.title);
+  return cleaned === task.title ? task : { ...task, title: cleaned };
+}
+
 /** Normalize DRF paginated or plain-array task responses */
 export function extractTaskList(
   data: PaginatedResponse<Task> | Task[] | null | undefined
@@ -364,6 +376,7 @@ export function getTaskPosterUser(task: Task): {
   last_name?: string;
   full_name?: string;
   profile_image?: string;
+  is_verified_tasker?: boolean;
 } | null {
   const nested =
     (task.poster && typeof task.poster === 'object' ? task.poster : null) ||

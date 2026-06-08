@@ -1,7 +1,16 @@
-
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, X } from 'lucide-react';
+import {
+  postTaskLabel,
+  postTaskInputMd,
+  postTaskInputError,
+  postTaskErrorText,
+} from '@/components/post-task/postTaskStyles';
+import { landingHeadline } from '@/components/LangingHome/landingTypography';
+
+const postTaskTextareaMd =
+  `${postTaskInputMd} min-h-[120px] resize-none py-3 sm:min-h-[140px]`;
 
 export interface TaskData {
   title: string;
@@ -52,7 +61,6 @@ export const DetailsStep: React.FC<DetailsStepProps> = ({ data, updateData, show
 
     const next = [...(data.images || [])];
     for (const file of picked) {
-      // avoid duplicates by (name,size,lastModified)
       const exists = next.some(
         (x) =>
           x.name === file.name &&
@@ -69,39 +77,33 @@ export const DetailsStep: React.FC<DetailsStepProps> = ({ data, updateData, show
   };
 
   return (
-    <div className="w-full text-[#0a1452]">
-      <h1
-        className="mb-6 text-2xl font-bold uppercase tracking-tight sm:mb-8 sm:text-3xl lg:mb-12 lg:text-4xl"
-        style={{ fontFamily: '"Space Grotesk", sans-serif' }}
-      >
+    <div className="w-full">
+      <h1 className={`${landingHeadline} mb-1 text-xl leading-tight text-[#000d45] sm:text-2xl`}>
         Provide more details
       </h1>
+      <p className="mb-4 font-body text-xs text-[#6a719a] sm:mb-5 sm:text-sm">
+        Help taskers understand the job so they can send accurate quotes.
+      </p>
 
-      <div className="space-y-6 sm:space-y-8 lg:space-y-10">
+      <div className="w-full max-w-md space-y-4 sm:max-w-lg sm:space-y-5">
         <div>
-          <label className="block text-[15px] font-bold mb-4">What are the details?</label>
+          <label className={`${postTaskLabel} mb-2 block`}>What are the details?</label>
           <textarea
-            className={`min-h-[140px] w-full resize-none rounded-2xl border-2 bg-white p-4 text-base placeholder:text-gray-400 outline-none transition-all sm:min-h-[160px] sm:p-5 sm:text-lg lg:min-h-[200px] ${
-              showError 
-                ? 'border-[#ff4d00] focus:ring-0' 
-                : 'border-blue-100 focus:border-[#0066ff] focus:ring-0'
-            }`}
-            placeholder="Write a summary of the key details"
+            className={`${postTaskTextareaMd} ${showError ? postTaskInputError : ''}`}
+            placeholder="Write a summary of the key details — what's involved, any tools needed, access instructions, etc."
             value={data.details}
             onBlur={() => setIsTouched(true)}
             onChange={(e) => updateData({ details: e.target.value })}
           />
           {showError && (
-            <p className="mt-2 text-[13px] font-bold text-[#ff4d00]">
-              {error || 'This field is required'}
-            </p>
+            <p className={postTaskErrorText}>{error || 'This field is required'}</p>
           )}
         </div>
 
         <div>
-          <div className="flex items-center gap-1.5 mb-6">
-            <h3 className="text-[15px] font-bold">Add images</h3>
-            <span className="text-[15px] font-medium text-gray-400">(optional)</span>
+          <div className="mb-2 flex items-center gap-1.5">
+            <h3 className={postTaskLabel}>Add images</h3>
+            <span className="font-body text-xs font-medium text-[#8a96b0]">(optional)</span>
           </div>
           <input
             ref={fileInputRef}
@@ -112,34 +114,30 @@ export const DetailsStep: React.FC<DetailsStepProps> = ({ data, updateData, show
             onChange={(e) => onPickImages(e.target.files)}
           />
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex h-24 w-24 items-center justify-center rounded-2xl border-2 border-transparent bg-gray-50 transition-all group hover:border-gray-200 sm:h-32 sm:w-32"
+              className="group flex h-20 w-20 items-center justify-center rounded-xl bg-gray-50 transition-all hover:bg-gray-100"
             >
-              <div className="w-10 h-10 rounded-full border-2 border-[#0066ff] flex items-center justify-center text-[#0066ff] group-hover:bg-[#0066ff] group-hover:text-white transition-all">
-                <Plus className="w-6 h-6 stroke-[3]" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary transition-all group-hover:bg-primary group-hover:text-white">
+                <Plus className="h-4 w-4 stroke-[3]" />
               </div>
             </button>
 
             {previews.map((p) => (
               <div
                 key={p.url}
-                className="relative h-24 w-24 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 sm:h-32 sm:w-32"
+                className="relative h-20 w-20 overflow-hidden rounded-xl bg-gray-50"
               >
-                <img
-                  src={p.url}
-                  alt={p.name}
-                  className="w-full h-full object-cover"
-                />
+                <img src={p.url} alt={p.name} className="h-full w-full object-cover" />
                 <button
                   type="button"
                   onClick={() => removeImage(p.name)}
-                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 hover:bg-white border border-gray-200 flex items-center justify-center"
+                  className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/95 shadow-sm hover:bg-white"
                   aria-label={`Remove ${p.name}`}
                 >
-                  <X className="w-4 h-4 text-gray-600" />
+                  <X className="h-4 w-4 text-[#6a719a]" />
                 </button>
               </div>
             ))}

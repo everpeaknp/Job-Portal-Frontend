@@ -12,12 +12,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { chatService } from '@/services/chat.service';
 import { Message } from '@/types';
 import { buildChatWebSocketUrl, isWebSocketsEnabled } from '@/lib/chatWebSocket';
+import UserAvatar from '@/components/common/UserAvatar';
 
 interface ChatWindowProps {
   taskId: number;
   recipientId: number;
   recipientName: string;
   recipientImage?: string;
+  recipientVerified?: boolean;
   onClose: () => void;
 }
 
@@ -26,6 +28,7 @@ export default function ChatWindow({
   recipientId,
   recipientName,
   recipientImage,
+  recipientVerified = false,
   onClose,
 }: ChatWindowProps) {
   const { user } = useAuth();
@@ -169,10 +172,11 @@ export default function ChatWindow({
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b bg-primary text-white rounded-t-lg">
         <div className="flex items-center space-x-3">
-          <img
-            src={recipientImage || '/images/default-avatar.png'}
-            alt={recipientName}
-            className="w-10 h-10 rounded-full"
+          <UserAvatar
+            src={recipientImage}
+            name={recipientName}
+            size="md"
+            verified={recipientVerified}
           />
           <div>
             <h3 className="font-semibold">{recipientName}</h3>

@@ -13,7 +13,7 @@ import {
   type LandingTaskerCard,
 } from "@/lib/landingHome";
 import { formatNPR } from "@/lib/nepalLocale";
-import { landingHeadline, landingHeadlineSm } from "./landingTypography";
+import { landingBody, landingBodyMuted, landingHeadline, landingHeadlineSm } from "./landingTypography";
 
 const FALLBACK_TASKERS = buildMockLandingTaskerCards();
 
@@ -86,10 +86,10 @@ export default function EarningsBanner() {
   };
 
   return (
-    <section className="bg-white px-2 py-8 sm:px-4 sm:py-12">
-      <div className="relative overflow-hidden rounded-t-[2rem] bg-[#1161fe] py-12 text-white sm:rounded-t-[3rem] sm:py-16 md:py-24 lg:rounded-t-[4rem]">
+    <section className="bg-white px-2 py-4 sm:px-4 sm:py-6">
+      <div className="relative overflow-hidden rounded-t-[2rem] bg-[#1161fe] py-8 text-white sm:rounded-t-[3rem] sm:py-10 md:py-12 lg:rounded-t-[4rem]">
         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-12 grid items-center gap-10 lg:mb-24 lg:grid-cols-2 lg:gap-20">
+          <div className="mb-8 grid items-center gap-8 lg:mb-10 lg:grid-cols-2 lg:gap-12">
             <div>
               <h2
                 className={`${landingHeadline} mb-6 text-3xl uppercase italic leading-tight sm:mb-8 sm:text-5xl md:text-6xl`}
@@ -104,13 +104,13 @@ export default function EarningsBanner() {
                 ].map((text, i) => (
                   <div key={i} className="flex items-center gap-3">
                     <CheckCircle2 className="h-5 w-5 shrink-0 text-white sm:h-6 sm:w-6" />
-                    <span className="text-base font-semibold tracking-tight sm:text-xl">{text}</span>
+                    <span className={`${landingBody} text-base font-semibold tracking-tight sm:text-xl`}>{text}</span>
                   </div>
                 ))}
               </div>
               <Link
                 href="/signup?role=tasker"
-                className="inline-flex min-h-12 w-full cursor-pointer items-center justify-center rounded-full bg-white px-8 py-4 text-center text-base font-semibold text-[#1161fe] shadow-2xl shadow-black/20 transition-all hover:scale-105 active:scale-95 sm:w-auto sm:px-12 sm:py-5 sm:text-xl"
+                className={`${landingBody} inline-flex min-h-12 w-full cursor-pointer items-center justify-center rounded-full bg-white px-8 py-4 text-center text-base font-semibold text-[#1161fe] shadow-2xl shadow-black/20 transition-all hover:scale-105 active:scale-95 sm:w-auto sm:px-12 sm:py-5 sm:text-xl`}
               >
                 Become a Tasker
               </Link>
@@ -131,13 +131,13 @@ export default function EarningsBanner() {
                     <p className={`${landingHeadlineSm} line-clamp-1 text-xl sm:text-3xl`}>
                       {spotlight.name}
                     </p>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest opacity-70 sm:text-xs">
+                    <p className={`${landingHeadlineSm} text-[10px] uppercase tracking-widest opacity-70 sm:text-xs`}>
                       {spotlight.type}
                     </p>
                   </div>
                 </div>
                 <div className="shrink-0 sm:text-right">
-                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-tighter opacity-70 sm:text-xs">
+                  <p className={`${landingHeadlineSm} mb-1 text-[10px] uppercase tracking-tighter opacity-70 sm:text-xs`}>
                     Weekly Earnings
                   </p>
                   <p className={`${landingHeadline} text-2xl sm:text-5xl`}>{weeklyEarnings}</p>
@@ -196,7 +196,7 @@ export default function EarningsBanner() {
                         {tasker.rating}
                       </span>
                       <Star className="text-orange-500 fill-orange-500" size={24} />
-                      <div className="text-[10px] leading-tight text-gray-400 font-medium">
+                      <div className={`${landingBodyMuted} text-[10px] leading-tight text-gray-400`}>
                         OVERALL RATING
                         <br />
                         {tasker.totalRatings} ratings
@@ -206,7 +206,7 @@ export default function EarningsBanner() {
                       <span className={`${landingHeadlineSm} text-xl text-[#0b1442] sm:text-3xl`}>
                         {tasker.completionRate}%
                       </span>
-                      <div className="text-[10px] leading-tight text-gray-400 font-medium">
+                      <div className={`${landingBodyMuted} text-[10px] leading-tight text-gray-400`}>
                         COMPLETION RATE
                         <br />
                         on TaskNepal
@@ -217,13 +217,13 @@ export default function EarningsBanner() {
                   <div className="h-[1px] bg-gray-100 w-full mb-8" />
 
                   <div className="mb-6">
-                    <p className="text-sm font-semibold text-[#0b1442] mb-3">
+                    <p className={`${landingBody} mb-3 text-sm font-semibold text-[#0b1442]`}>
                       Specialities:{" "}
                       <span className="font-bold text-gray-600">
                         {tasker.specialities.join(", ")}
                       </span>
                     </p>
-                    <p className="text-sm font-medium text-gray-500 leading-relaxed line-clamp-4">
+                    <p className={`${landingBodyMuted} line-clamp-4 text-sm leading-relaxed text-gray-500`}>
                       {tasker.description}
                     </p>
                   </div>
@@ -238,13 +238,13 @@ export default function EarningsBanner() {
                     <>
                       <div className="h-[1px] bg-gray-100 w-full mb-8" />
                       <div>
-                        <p className="text-[10px] font-semibold text-[#0b1442] uppercase tracking-widest mb-4">
+                        <p className={`${landingHeadlineSm} mb-4 text-[10px] uppercase tracking-widest text-[#0b1442]`}>
                           What the reviews say
                         </p>
-                        <p className="text-sm font-medium text-[#384179] mb-4 italic leading-relaxed">
+                        <p className={`${landingBody} mb-4 text-sm font-medium italic leading-relaxed text-[#384179]`}>
                           &ldquo;{tasker.topReview.text}&rdquo;
                         </p>
-                        <p className="text-xs font-medium text-gray-400">
+                        <p className={`${landingBodyMuted} text-xs text-gray-400`}>
                           — {tasker.topReview.author}
                         </p>
                       </div>
@@ -266,7 +266,7 @@ function Badge({ icon, label }: { icon: ReactNode; label: string }) {
   return (
     <div className="flex items-center gap-2 bg-[#f0f5ff] px-4 py-2 rounded-full">
       <div className="text-[#384179]">{icon}</div>
-      <span className="text-xs font-semibold text-[#384179] tracking-tight">{label}</span>
+      <span className={`${landingBody} text-xs font-semibold tracking-tight text-[#384179]`}>{label}</span>
     </div>
   );
 }

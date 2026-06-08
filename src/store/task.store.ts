@@ -11,6 +11,7 @@ import { buildTaskApiParams } from '@/lib/taskApiParams';
 import {
   extractCategoryList,
   getFallbackCategories,
+  normalizeTaskForDisplay,
 } from '@/lib/taskUtils';
 
 interface TaskState {
@@ -71,7 +72,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       if (response.success) {
         const data = response.data as PaginatedResponse<Task>;
         set({
-          tasks: data.results ?? [],
+          tasks: (data.results ?? []).map(normalizeTaskForDisplay),
           pagination: {
             count: data.count,
             next: data.next,
@@ -138,7 +139,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         }
         
         set({
-          tasks: data.results || [],
+          tasks: (data.results || []).map(normalizeTaskForDisplay),
           pagination: {
             count: data.count || 0,
             next: data.next || null,
@@ -198,9 +199,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       
       const response = await taskService.getTaskById(taskId);
       
-      if (response.success) {
+      if (response.success && response.data) {
         set({
-          currentTask: response.data,
+          currentTask: normalizeTaskForDisplay(response.data),
           isLoading: false
         });
       }
@@ -265,11 +266,12 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       
       if (response.success) {
         // Update in list if exists
+        const updated = normalizeTaskForDisplay(response.data);
         set((state) => ({
           tasks: state.tasks.map((task) =>
-            task.id === taskId ? response.data : task
+            task.id === taskId ? updated : task
           ),
-          currentTask: state.currentTask?.id === taskId ? response.data : state.currentTask,
+          currentTask: state.currentTask?.id === taskId ? updated : state.currentTask,
           isLoading: false
         }));
       }

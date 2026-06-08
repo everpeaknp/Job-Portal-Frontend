@@ -28,6 +28,7 @@ export interface Task {
     name: string;
     avatar: string;
     rating: number;
+    verified?: boolean;
   };
   /** Sidebar sort index (0 = first in sorted browse list) */
   browseOrder?: number;

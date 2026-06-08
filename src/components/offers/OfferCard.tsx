@@ -13,8 +13,9 @@
  */
 
 import { Bid, Task } from '@/types';
-import { Star, Clock, MessageCircle, Check, X, User, CheckCircle } from 'lucide-react';
+import { Star, Clock, MessageCircle, Check, X, CheckCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import UserAvatar from '@/components/common/UserAvatar';
 
 interface OfferCardProps {
   offer: Bid;
@@ -77,25 +78,12 @@ export function OfferCard({
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-start gap-4 flex-1">
-          {/* Provider Avatar */}
-          <div className="relative">
-            {offer.tasker.profile_image ? (
-              <img
-                src={offer.tasker.profile_image}
-                alt={`${offer.tasker.first_name} ${offer.tasker.last_name}`}
-                className="w-16 h-16 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
-                <User className="h-8 w-8 text-gray-400" />
-              </div>
-            )}
-            {offer.tasker.is_verified_tasker && (
-              <div className="absolute -bottom-1 -right-1 bg-blue-500 rounded-full p-1">
-                <CheckCircle className="h-4 w-4 text-white" />
-              </div>
-            )}
-          </div>
+          <UserAvatar
+            src={offer.tasker.profile_image}
+            name={`${offer.tasker.first_name || ''} ${offer.tasker.last_name || ''}`.trim()}
+            size="xl"
+            verified={offer.tasker.is_verified_tasker}
+          />
 
           {/* Provider Info */}
           <div className="flex-1">

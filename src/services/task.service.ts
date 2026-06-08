@@ -98,6 +98,18 @@ export const taskService = {
   },
 
   /**
+   * Get public open tasks posted by a user (profile page)
+   */
+  async getUserPostedTasks(
+    userId: string,
+    params?: Record<string, string | number>
+  ): Promise<ApiResponse<PaginatedResponse<Task>>> {
+    return apiClient.get<PaginatedResponse<Task>>(`/users/${userId}/posted_tasks/`, {
+      params,
+    });
+  },
+
+  /**
    * Get user's posted tasks
    */
   async getMyTasks(status?: string): Promise<ApiResponse<PaginatedResponse<Task>>> {

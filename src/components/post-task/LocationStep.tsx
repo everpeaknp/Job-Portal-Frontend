@@ -10,6 +10,15 @@ import {
   type NominatimPlace,
 } from '@/lib/nepalLocale';
 import { locationService, type City } from '@/services/location.service';
+import {
+  postTaskLabel,
+  postTaskInputMd,
+  postTaskInputError,
+  postTaskErrorText,
+  postTaskCardActive,
+  postTaskCardInactive,
+} from '@/components/post-task/postTaskStyles';
+import { landingHeadline } from '@/components/LangingHome/landingTypography';
 
 export interface TaskData {
   title: string;
@@ -233,57 +242,70 @@ export const LocationStep: React.FC<LocationStepProps> = ({ data, updateData, sh
     );
   };
 
+  const cardClass = (active: boolean) =>
+    `flex-1 cursor-pointer rounded-xl px-3 py-3 text-center transition-all sm:px-4 sm:py-4 ${
+      active ? postTaskCardActive : postTaskCardInactive
+    }`;
+
   return (
     <div className="w-full">
-      <h1
-        className="mb-6 text-2xl font-bold uppercase tracking-tight text-[#0a1452] sm:mb-8 sm:text-3xl lg:mb-12 lg:text-4xl"
-        style={{ fontFamily: '"Space Grotesk", sans-serif' }}
-      >
+      <h1 className={`${landingHeadline} mb-1 text-xl leading-tight text-[#000d45] sm:text-2xl`}>
         Tell us where
       </h1>
+      <p className="mb-4 font-body text-xs text-[#6a719a] sm:mb-5 sm:text-sm">
+        Choose whether the tasker needs to be on-site or can work remotely.
+      </p>
 
-      <div className="space-y-6 sm:space-y-8 lg:space-y-10">
-        <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+      <div className="w-full max-w-md space-y-4 sm:max-w-lg sm:space-y-5">
+        <div className="flex gap-2 sm:gap-3">
           <button
             type="button"
             onClick={() => handleLocationTypeChange('in-person')}
-            className={`flex-1 rounded-2xl border-2 p-5 text-center transition-all cursor-pointer sm:p-8 ${
-              data.locationType === 'in-person'
-                ? 'bg-[#0a1452] border-[#0a1452] text-white shadow-xl shadow-blue-900/20'
-                : 'bg-gray-50 border-transparent text-[#0a1452] hover:border-gray-200'
-            }`}
+            className={cardClass(data.locationType === 'in-person')}
           >
-            <MapPin className={`mx-auto mb-3 h-7 w-7 sm:mb-4 sm:h-8 sm:w-8 ${data.locationType === 'in-person' ? 'text-white' : 'text-[#0a1452]'}`} />
-            <div className="mb-1 text-lg font-bold sm:mb-2 sm:text-xl">In-person</div>
-            <div className={`text-sm font-medium leading-relaxed ${data.locationType === 'in-person' ? 'text-blue-100' : 'text-gray-500'}`}>
-              Select this if you need the Tasker physically there
+            <MapPin
+              className={`mx-auto mb-2 h-5 w-5 ${
+                data.locationType === 'in-person' ? 'text-white' : 'text-primary'
+              }`}
+            />
+            <div className="mb-0.5 font-formula text-sm font-bold sm:text-base">In-person</div>
+            <div
+              className={`font-body text-[11px] font-medium leading-snug sm:text-xs ${
+                data.locationType === 'in-person' ? 'text-white/80' : 'text-[#6a719a]'
+              }`}
+            >
+              Tasker needs to be physically there
             </div>
           </button>
 
           <button
             type="button"
             onClick={() => handleLocationTypeChange('remote')}
-            className={`flex-1 rounded-2xl border-2 p-5 text-center transition-all cursor-pointer sm:p-8 ${
-              data.locationType === 'remote'
-                ? 'bg-[#0a1452] border-[#0a1452] text-white shadow-xl shadow-blue-900/20'
-                : 'bg-gray-50 border-transparent text-[#0a1452] hover:border-gray-200'
-            }`}
+            className={cardClass(data.locationType === 'remote')}
           >
-            <Smartphone className={`mx-auto mb-3 h-7 w-7 sm:mb-4 sm:h-8 sm:w-8 ${data.locationType === 'remote' ? 'text-white' : 'text-[#0a1452]'}`} />
-            <div className="mb-1 text-lg font-bold sm:mb-2 sm:text-xl">Online</div>
-            <div className={`text-sm font-medium leading-relaxed ${data.locationType === 'remote' ? 'text-blue-100' : 'text-gray-500'}`}>
-              Select this if the Tasker can do it from home
+            <Smartphone
+              className={`mx-auto mb-2 h-5 w-5 ${
+                data.locationType === 'remote' ? 'text-white' : 'text-primary'
+              }`}
+            />
+            <div className="mb-0.5 font-formula text-sm font-bold sm:text-base">Online</div>
+            <div
+              className={`font-body text-[11px] font-medium leading-snug sm:text-xs ${
+                data.locationType === 'remote' ? 'text-white/80' : 'text-[#6a719a]'
+              }`}
+            >
+              Tasker can do it from home
             </div>
           </button>
         </div>
 
         {data.locationType === 'in-person' && (
-          <div className="space-y-4">
-            <label className="block text-[15px] font-bold text-[#0a1452]">
+          <div className="space-y-2">
+            <label className={`${postTaskLabel} block`}>
               Where in Nepal do you need this done?
             </label>
             <div className="relative" ref={locationInputRef}>
-              <MapPin className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400 z-10 pointer-events-none" />
+              <MapPin className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-[#8a96b0]" />
               <input
                 type="text"
                 role="combobox"
@@ -291,8 +313,8 @@ export const LocationStep: React.FC<LocationStepProps> = ({ data, updateData, sh
                 aria-controls={suggestionsListId}
                 aria-autocomplete="list"
                 autoComplete="off"
-                className={`w-full rounded-2xl bg-gray-50 py-4 pl-12 pr-14 text-base placeholder:text-gray-400 outline-none transition-all sm:py-5 sm:pl-14 sm:pr-16 sm:text-lg ${
-                  showLocationError ? 'ring-2 ring-[#ff4d00]' : 'focus:ring-2 focus:ring-[#0066ff]'
+                className={`${postTaskInputMd} py-3 pl-9 pr-11 ${
+                  showLocationError ? postTaskInputError : ''
                 }`}
                 placeholder="e.g. Kalimati, Kathmandu or Lalitpur"
                 value={data.location}
@@ -330,13 +352,13 @@ export const LocationStep: React.FC<LocationStepProps> = ({ data, updateData, sh
                 type="button"
                 onClick={handleDetectLocation}
                 disabled={isDetecting}
-                className="absolute right-5 top-1/2 -translate-y-1/2 text-[#0066ff] hover:text-[#0052cc] disabled:text-gray-400 transition-colors z-10"
+                className="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-primary transition-colors hover:text-[#0052d9] disabled:text-[#8a96b0]"
                 title="Detect my location"
               >
                 {isDetecting || isSearching ? (
-                  <Loader2 className="w-6 h-6 animate-spin" />
+                  <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
-                  <Navigation className="w-6 h-6" />
+                  <Navigation className="h-5 w-5" />
                 )}
               </button>
 
@@ -345,17 +367,17 @@ export const LocationStep: React.FC<LocationStepProps> = ({ data, updateData, sh
                   id={suggestionsListId}
                   role="listbox"
                   data-location-suggestions
-                  className="absolute left-0 right-0 top-full z-20 mt-2 max-h-64 overflow-y-auto rounded-2xl border border-gray-100 bg-white py-2 shadow-lg shadow-gray-200/80"
+                  className="absolute left-0 right-0 top-full z-20 mt-1.5 max-h-56 overflow-y-auto rounded-xl bg-white py-1.5 shadow-xl shadow-[#000d45]/8"
                 >
                   {citySuggestions.map((city) => (
                     <li key={`city-${city.id}`} role="option">
                       <button
                         type="button"
-                        className="flex w-full items-start gap-3 px-4 py-3 text-left text-[15px] text-gray-700 transition-colors hover:bg-gray-50"
+                        className="flex w-full items-start gap-2.5 px-3 py-2.5 text-left font-body text-sm text-[#000d45] transition-colors hover:bg-gray-50"
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => selectCity(city)}
                       >
-                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#0066ff]" />
+                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                         <span className="leading-snug">
                           {[city.name, city.state_name].filter(Boolean).join(', ')}
                         </span>
@@ -366,16 +388,16 @@ export const LocationStep: React.FC<LocationStepProps> = ({ data, updateData, sh
                     <li key={place.place_id} role="option" aria-selected={index === highlightIndex}>
                       <button
                         type="button"
-                        className={`flex w-full items-start gap-3 px-4 py-3 text-left text-[15px] transition-colors ${
+                        className={`flex w-full items-start gap-2.5 px-3 py-2.5 text-left font-body text-sm transition-colors ${
                           index === highlightIndex
-                            ? 'bg-[#f1f4f9] text-[#0a1452]'
-                            : 'text-gray-700 hover:bg-gray-50'
+                            ? 'bg-[#eef4ff] text-[#000d45]'
+                            : 'text-[#000d45] hover:bg-gray-50'
                         }`}
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => selectSuggestion(place)}
                         onMouseEnter={() => setHighlightIndex(index)}
                       >
-                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#0066ff]" />
+                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                         <span className="leading-snug">
                           {shortenNominatimDisplayName(place.display_name, 4)}
                         </span>
@@ -391,25 +413,25 @@ export const LocationStep: React.FC<LocationStepProps> = ({ data, updateData, sh
                 suggestions.length === 0 && (
                   <div
                     data-location-suggestions
-                    className="absolute left-0 right-0 top-full z-20 mt-2 rounded-2xl border border-gray-100 bg-white px-4 py-3 text-sm text-gray-500 shadow-lg"
+                    className="absolute left-0 right-0 top-full z-20 mt-1.5 rounded-xl bg-white px-3 py-2.5 font-body text-xs text-[#6a719a] shadow-lg"
                   >
                     No addresses found. Try a nearby area or ward name.
                   </div>
                 )}
             </div>
-            <p className="text-sm text-gray-500 flex items-center gap-2">
-              <Navigation className="w-4 h-4" />
-              Start typing for address suggestions, or use the icon to detect your location
+            <p className="flex items-center gap-1.5 font-body text-xs text-[#6a719a]">
+              <Navigation className="h-3.5 w-3.5 shrink-0 text-primary" />
+              Start typing for suggestions, or use the icon to detect your location
             </p>
             {showLocationError && (
-              <p className="mt-2 text-[13px] font-bold text-[#ff4d00]">{errors?.location}</p>
+              <p className={postTaskErrorText}>{errors?.location}</p>
             )}
           </div>
         )}
         
         {data.locationType === 'remote' && (
-          <div className="space-y-4">
-            <p className="text-[15px] font-medium text-gray-600">
+          <div className="rounded-xl bg-gray-50 px-3 py-3 sm:px-4 sm:py-3.5">
+            <p className="font-body text-xs font-medium text-[#6a719a] sm:text-sm">
               This task can be completed remotely. No physical location required.
             </p>
           </div>

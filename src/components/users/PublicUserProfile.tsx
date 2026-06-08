@@ -8,9 +8,9 @@ import {
   Star,
   Users,
   UserPlus,
+  Pencil,
   ChevronLeft,
   Loader2,
-  BadgeCheck,
   Briefcase,
   Car,
 } from 'lucide-react';
@@ -20,12 +20,19 @@ import Navbar from '@/components/common/navbar';
 import UserAvatar from '@/components/common/UserAvatar';
 import { userService } from '@/services/user.service';
 import { reviewService } from '@/services/review.service';
+import { taskService } from '@/services/task.service';
+import TaskCard from '@/components/task/TaskCard';
+import { buildBrowseTaskCardProps } from '@/lib/browseTaskCard';
+import { KATHMANDU_CENTER } from '@/lib/userGeolocation';
 import { getMediaUrl } from '@/lib/utils';
+import { normalizeTaskForDisplay } from '@/lib/taskUtils';
+import type { Task } from '@/types';
 import {
   extractReviewList,
   formatCompletionRate,
   formatProfileRating,
   formatReviewTimeAgo,
+  formatShortLocation,
   groupProfileSkills,
   reviewerDisplayName,
 } from '@/lib/publicProfile';
@@ -33,9 +40,6 @@ import type { PublicProfileReview, PublicUserProfile } from '@/types/publicProfi
 import type { PortfolioItem, UserSkill } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
 import PublicPortfolioGallery from '@/components/users/PublicPortfolioGallery';
-import PublicLicenceBadges, {
-  getVerifiedLicenceBadges,
-} from '@/components/users/PublicLicenceBadges';
 import PublicProfileSection from '@/components/users/PublicProfileSection';
 
 interface PublicUserProfileProps {
@@ -54,12 +58,16 @@ export default function PublicUserProfile({ slug }: PublicUserProfileProps) {
   const [isFollowing, setIsFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([]);
+  const [postedTasks, setPostedTasks] = useState<Task[]>([]);
+  const [postedTasksLoading, setPostedTasksLoading] = useState(false);
 
   const loadProfile = useCallback(async () => {
     if (!slug) return;
     setLoading(true);
     setError(null);
     setPortfolioItems([]);
+    setPostedTasks([]);
+    setPostedTasksLoading(false);
     try {
       const res = await userService.getPublicProfileByUsername(slug);
       if (!res.success || !res.data) {
@@ -102,6 +110,22 @@ export default function PublicUserProfile({ slug }: PublicUserProfileProps) {
       } catch {
         setPortfolioItems([]);
       }
+
+      setPostedTasksLoading(true);
+      try {
+        const tasksRes = await taskService.getUserPostedTasks(res.data.id, {
+          page_size: 24,
+        });
+        if (tasksRes.success && tasksRes.data?.results) {
+          setPostedTasks(tasksRes.data.results.map(normalizeTaskForDisplay));
+        } else {
+          setPostedTasks([]);
+        }
+      } catch {
+        setPostedTasks([]);
+      } finally {
+        setPostedTasksLoading(false);
+      }
     } catch (err) {
       setProfile(null);
       const message =
@@ -126,11 +150,6 @@ export default function PublicUserProfile({ slug }: PublicUserProfileProps) {
   const skillGroups = useMemo(
     () => groupProfileSkills(profile?.skills),
     [profile?.skills],
-  );
-
-  const verifiedLicences = useMemo(
-    () => getVerifiedLicenceBadges(profile?.badges),
-    [profile?.badges],
   );
 
   const ratingDisplay = formatProfileRating(profile?.average_rating);
@@ -199,7 +218,13 @@ export default function PublicUserProfile({ slug }: PublicUserProfileProps) {
 
   const avatar = getMediaUrl(profile.profile_image);
   const displayName = profile.display_name || profile.full_name;
-  const onlineLabel = profile.online_status || (profile.is_online ? 'Online now' : 'Offline');
+  const username = profile.username?.trim() || '';
+  const shortLocation = formatShortLocation(profile);
+  const onlineStatusLabel =
+    profile.online_status || (profile.is_online ? 'Online now' : null);
+  const showOnlineStatus =
+    Boolean(profile.is_online) ||
+    (onlineStatusLabel != null && onlineStatusLabel !== 'Offline');
   const taskSkills = skillGroups.skill;
   const transportLabels =
     skillGroups.transport.length > 0
@@ -215,13 +240,19 @@ export default function PublicUserProfile({ slug }: PublicUserProfileProps) {
     qualificationSkills.length > 0 ||
     experienceSkills.length > 0;
 
+  const postedTasksCount = profile.tasks_posted ?? postedTasks.length;
+
   const navLinks = [
     profile.bio ? { href: '#about', label: 'About' } : null,
-    verifiedLicences.length ? { href: '#licences', label: 'Licences' } : null,
+    postedTasks.length || postedTasksCount
+      ? { href: '#posted-tasks', label: 'Posted tasks' }
+      : null,
     hasSkills ? { href: '#skills', label: 'Skills' } : null,
     portfolioItems.length ? { href: '#portfolio', label: 'Portfolio' } : null,
     { href: '#reviews', label: 'Reviews' },
   ].filter(Boolean) as { href: string; label: string }[];
+
+  const browseUserCenter: [number, number] = [KATHMANDU_CENTER.lat, KATHMANDU_CENTER.lng];
 
   const memberSince = profile.date_joined
     ? format(new Date(profile.date_joined), 'MMMM yyyy')
@@ -243,6 +274,16 @@ export default function PublicUserProfile({ slug }: PublicUserProfileProps) {
             }}
           />
 
+          {isOwnProfile ? (
+            <Link
+              href="/tasker-dashboard/profile"
+              className="absolute right-4 top-4 z-10 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#000d45] shadow-sm transition-colors hover:bg-white/95 sm:right-6 sm:top-6 sm:px-5 sm:py-2.5"
+            >
+              <Pencil className="h-4 w-4" />
+              Edit profile
+            </Link>
+          ) : null}
+
           <div className="relative px-6 pb-6 pt-8 sm:px-10 sm:pb-8 sm:pt-10">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
@@ -250,40 +291,36 @@ export default function PublicUserProfile({ slug }: PublicUserProfileProps) {
                   src={avatar}
                   name={profile.full_name}
                   size="xl"
-                  className="!h-24 !w-24 shrink-0 ring-4 ring-white/20 shadow-xl sm:!h-28 sm:!w-28"
+                  verified={profile.is_verified_tasker}
+                  className="!h-24 !w-24 ring-4 ring-white/20 shadow-xl sm:!h-28 sm:!w-28"
                 />
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-white/70">
-                    {profile.role === 'tasker' ? 'Tasker profile' : 'Member profile'}
-                  </p>
-                  <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
+                  {username ? (
+                    <p className="text-sm text-white/60">@{username}</p>
+                  ) : null}
+                  <h1
+                    className={`font-bold tracking-tight text-3xl sm:text-4xl ${username ? 'mt-1' : ''}`}
+                  >
                     {displayName}
                   </h1>
-                  {profile.username ? (
-                    <p className="mt-1 text-sm text-white/60">@{profile.username}</p>
-                  ) : null}
                   {profile.tagline ? (
                     <p className="mt-2 max-w-lg text-base text-white/85">{profile.tagline}</p>
                   ) : null}
                   <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 font-medium backdrop-blur-sm">
-                      <span
-                        className={`h-2 w-2 rounded-full ${
-                          profile.is_online ? 'bg-emerald-400' : 'bg-white/40'
-                        }`}
-                      />
-                      {onlineLabel}
-                    </span>
-                    {profile.location_display ? (
-                      <span className="inline-flex items-center gap-1.5 text-white/80">
-                        <MapPin className="h-4 w-4 shrink-0" />
-                        {profile.location_display}
+                    {showOnlineStatus && onlineStatusLabel ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 font-medium backdrop-blur-sm">
+                        <span
+                          className={`h-2 w-2 rounded-full ${
+                            profile.is_online ? 'bg-emerald-400' : 'bg-white/40'
+                          }`}
+                        />
+                        {onlineStatusLabel}
                       </span>
                     ) : null}
-                    {profile.is_verified_tasker ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-100">
-                        <BadgeCheck className="h-3.5 w-3.5" />
-                        Verified tasker
+                    {shortLocation ? (
+                      <span className="inline-flex max-w-xs items-center gap-1.5 text-white/80 sm:max-w-sm">
+                        <MapPin className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{shortLocation}</span>
                       </span>
                     ) : null}
                   </div>
@@ -350,19 +387,6 @@ export default function PublicUserProfile({ slug }: PublicUserProfileProps) {
               </div>
             </div>
 
-            {verifiedLicences.length > 0 ? (
-              <div className="mt-6 flex flex-wrap gap-2 border-t border-white/10 pt-6">
-                {verifiedLicences.map((badge) => (
-                  <span
-                    key={badge.id}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/25 px-3 py-1.5 text-xs font-semibold text-emerald-50 ring-1 ring-emerald-400/30"
-                  >
-                    <BadgeCheck className="h-3.5 w-3.5" />
-                    {badge.name}
-                  </span>
-                ))}
-              </div>
-            ) : null}
           </div>
         </header>
 
@@ -396,7 +420,39 @@ export default function PublicUserProfile({ slug }: PublicUserProfileProps) {
             </PublicProfileSection>
           ) : null}
 
-          <PublicLicenceBadges badges={profile.badges} />
+          {(postedTasksLoading || postedTasks.length > 0) && (
+            <PublicProfileSection
+              id="posted-tasks"
+              eyebrow="Tasks"
+              title="Posted tasks"
+              description={
+                postedTasks.length > 0
+                  ? `${postedTasks.length} open ${postedTasks.length === 1 ? 'task' : 'tasks'} available`
+                  : 'Open tasks posted by this member'
+              }
+            >
+              {postedTasksLoading ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {postedTasks.map((task) => {
+                    const cardProps = buildBrowseTaskCardProps(task, browseUserCenter);
+                    const taskSlug = task.slug || String(task.id);
+                    return (
+                      <TaskCard
+                        key={task.id}
+                        {...cardProps}
+                        showOffersOnly
+                        onClick={() => router.push(`/task/${encodeURIComponent(taskSlug)}`)}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </PublicProfileSection>
+          )}
 
           {hasSkills ? (
             <PublicProfileSection
@@ -565,7 +621,12 @@ function ReviewCard({ review }: { review: PublicProfileReview }) {
   return (
     <article className="flex flex-col rounded-xl border border-slate-200 bg-slate-50/50 p-4">
       <div className="flex items-start gap-3">
-        <UserAvatar src={reviewerImg} name={reviewerName} size="md" />
+        <UserAvatar
+          src={reviewerImg}
+          name={reviewerName}
+          size="md"
+          verified={review.reviewer?.is_verified_tasker}
+        />
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-[#000d45]">{reviewerName}</p>
           <div className="mt-0.5 flex flex-wrap items-center gap-2">

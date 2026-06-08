@@ -34,5 +34,6 @@ export interface Task {
     name: string;
     avatar: string;
     rating: number;
+    verified?: boolean;
   };
 }

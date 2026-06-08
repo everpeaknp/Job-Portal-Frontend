@@ -20,12 +20,29 @@ import {
   Mail,
   UserCheck,
   Lock,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 import { cn } from '@/lib/utils';
+import UserAvatar from '@/components/common/UserAvatar';
 import { useAuthStore } from '@/store';
 import { useTaskerStats } from '@/context/TaskerStatsContext';
 import { toast } from 'sonner';
+import { landingBody } from '@/components/LangingHome/landingTypography';
+
+const navText = 'text-[#000d45]';
+const navLabel = landingBody;
+const navItemBase =
+  'flex items-center gap-x-3 rounded-lg p-3 transition-all duration-150';
+const navItemIdle = `${navText} font-medium hover:bg-primary/10 hover:text-primary`;
+const navItemActive = 'bg-primary/10 font-semibold text-primary';
+const subNavItemBase =
+  'flex items-center gap-x-3 rounded-lg p-2.5 transition-colors duration-150';
+const subNavItemIdle = `${navText} font-medium hover:bg-primary/10 hover:text-primary`;
+const subNavItemActive = 'bg-primary/10 font-semibold text-primary';
+const menuParentBase =
+  'flex w-full items-center justify-between rounded-lg p-3 transition-all duration-150';
+const menuParentIdle = `${navText} font-medium hover:bg-primary/10 hover:text-primary`;
+const menuParentActive = 'bg-primary/10 font-semibold text-primary';
 
 type MenuItem = {
   name: string;
@@ -73,31 +90,37 @@ const Menu = ({
     <div>
       <button
         className={cn(
-          "w-full flex items-center justify-between p-3 rounded-xl duration-150 font-bold transition-all",
-          isOpened || isAnyItemActive
-            ? "bg-white text-blue-950 shadow-sm"
-            : "text-gray-500 hover:bg-white hover:text-blue-950 hover:shadow-sm"
+          menuParentBase,
+          navLabel,
+          'text-sm',
+          isOpened || isAnyItemActive ? menuParentActive : menuParentIdle,
         )}
         onClick={() => setIsOpened((v) => !v)}
         aria-expanded={isOpened}
       >
         <div className="flex items-center gap-x-3">
-          <div className="text-gray-400 group-hover:text-blue-500">
+          <div
+            className={cn(
+              'transition-colors',
+              isOpened || isAnyItemActive ? 'text-primary' : navText,
+            )}
+          >
             {activeIcon}
           </div>
           {children}
         </div>
         <ChevronDown
           className={cn(
-            "w-4 h-4 duration-150 text-gray-400",
-            isOpened && "rotate-180"
+            'h-4 w-4 duration-150',
+            isOpened || isAnyItemActive ? 'text-primary' : navText,
+            isOpened && 'rotate-180',
           )}
         />
       </button>
       {isOpened && (
         <ul
           id="submenu"
-          className="mx-4 px-2 border-l-2 border-gray-100 text-sm font-medium mt-1 space-y-1 py-1"
+          className={cn(landingBody, 'mx-4 mt-1 space-y-1 border-l-2 border-primary/10 px-2 py-1 text-sm')}
         >
           {items.map((item, idx) => {
             const [itemPath, itemQuery] = item.href.split('?');
@@ -121,16 +144,18 @@ const Menu = ({
                   href={item.href}
                   onClick={onNavigate}
                   className={cn(
-                    "flex items-center gap-x-3 p-2.5 rounded-xl hover:bg-white hover:text-blue-950 duration-150 transition-colors",
-                    isActive
-                      ? "bg-white text-blue-950 shadow-sm font-bold"
-                      : "text-gray-500"
+                    subNavItemBase,
+                    navLabel,
+                    'text-xs',
+                    isActive ? subNavItemActive : subNavItemIdle,
                   )}
                 >
                   {item.icon ? (
-                    <div className={cn("transition-colors", isActive ? "text-blue-950" : "text-gray-400")}>{item.icon}</div>
+                    <div className={cn('transition-colors', isActive ? 'text-primary' : navText)}>
+                      {item.icon}
+                    </div>
                   ) : null}
-                  <span className="text-xs">{item.name}</span>
+                  <span>{item.name}</span>
                 </Link>
               </li>
             );
@@ -259,8 +284,6 @@ const Sidebar = ({ mobileOpen = false, onMobileOpenChange }: TaskerDashboardSide
   // Get user display info
   const userDisplayName = user ? `${user.first_name} ${user.last_name}`.trim() || 'User' : 'User';
   const userEmail = user?.email || '';
-  const userAvatar = user?.profile_image || 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&q=80&w=100&h=100';
-  const userInitials = user ? `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase() : 'U';
   const { stats: taskerStats } = useTaskerStats();
   const tierLabel = taskerStats?.tier?.current?.name
     ? `${taskerStats.tier.current.name} Tier`
@@ -269,30 +292,27 @@ const Sidebar = ({ mobileOpen = false, onMobileOpenChange }: TaskerDashboardSide
   return (
     <nav
       className={cn(
+        landingBody,
         'fixed top-14 left-0 z-50 h-[calc(100dvh-3.5rem)] w-full max-w-full border-r border-outline-variant bg-white overflow-y-auto overscroll-contain shadow-xl transition-transform duration-300 ease-out lg:z-40 lg:w-80 lg:max-w-80 lg:bg-surface-low lg:translate-x-0 lg:shadow-none',
-        mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
       )}
     >
       <div className="flex flex-col h-full px-4 pt-4 pb-2">
         {/* User Profile Header */}
         <div className="h-24 flex items-center px-2 mb-4 bg-primary rounded-2xl shadow-lg shadow-blue-500/20">
           <div className="w-full flex items-center gap-x-3 px-2">
-            {user?.profile_image ? (
-              <img
-                src={userAvatar}
-                className="w-12 h-12 rounded-full border-2 border-white object-cover shadow-sm"
-                alt="User avatar"
-              />
-            ) : (
-              <div className="w-12 h-12 rounded-full border-2 border-white bg-white flex items-center justify-center text-primary font-bold text-sm shadow-sm">
-                {userInitials}
-              </div>
-            )}
+            <UserAvatar
+              src={user?.profile_image}
+              name={userDisplayName}
+              size="lg"
+              verified={user?.is_verified_tasker}
+              className="border-2 border-white shadow-sm"
+            />
             <div className="flex-1 overflow-hidden">
-              <span className="block text-white text-sm font-bold truncate tracking-tight">
+              <span className={cn(navLabel, 'block truncate text-sm font-medium text-white')}>
                 {userDisplayName}
               </span>
-              <span className="block mt-px text-blue-100 text-xs font-semibold">
+              <span className={cn(landingBody, 'mt-px block text-xs font-medium text-blue-100')}>
                 {tierLabel}
               </span>
             </div>
@@ -316,20 +336,28 @@ const Sidebar = ({ mobileOpen = false, onMobileOpenChange }: TaskerDashboardSide
                 <div
                   id="profile-menu"
                   role="menu"
-                  className="absolute z-10 top-12 right-0 w-64 rounded-2xl bg-white shadow-xl border border-gray-100 p-2 animate-in fade-in zoom-in duration-200"
+                  className="absolute z-10 top-12 right-0 w-64 rounded-xl border border-outline-variant bg-white p-2 shadow-xl animate-in fade-in zoom-in duration-200"
                 >
                   <div className="p-1 space-y-1">
-                    <div className="px-3 py-2 mb-1">
-                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                    <div className="mb-1 px-3 py-2">
+                      <p
+                        className={cn(
+                          navLabel,
+                          'text-[10px] font-medium uppercase tracking-[0.2em] text-[#000d45]/60',
+                        )}
+                      >
                         Logged in as
                       </p>
-                      <p className="text-sm font-bold text-blue-950 truncate">
+                      <p className={cn(navLabel, 'truncate text-sm font-medium text-[#000d45]')}>
                         {userEmail}
                       </p>
                     </div>
                     <Link
                       href="/tasker-dashboard/profile"
-                      className="flex items-center gap-3 w-full p-2.5 text-left rounded-xl hover:bg-blue-50 hover:text-primary font-bold text-sm text-gray-600 transition-colors"
+                      className={cn(
+                        navLabel,
+                        'flex w-full items-center gap-3 rounded-lg p-2.5 text-left text-sm font-medium text-[#000d45] transition-colors hover:bg-primary/10 hover:text-primary',
+                      )}
                       role="menuitem"
                       onClick={() => {
                         setIsProfileActive(false);
@@ -339,10 +367,13 @@ const Sidebar = ({ mobileOpen = false, onMobileOpenChange }: TaskerDashboardSide
                       <User className="w-4 h-4" />
                       View Profile
                     </Link>
-                    <div className="h-px bg-gray-50 my-1 mx-2" />
-                    <button 
+                    <div className="mx-2 my-1 h-px bg-outline-variant" />
+                    <button
                       onClick={handleLogout}
-                      className="flex items-center gap-3 w-full p-2.5 text-left rounded-xl hover:bg-red-50 text-red-500 font-bold text-sm transition-colors"
+                      className={cn(
+                        navLabel,
+                        'flex w-full items-center gap-3 rounded-lg p-2.5 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50',
+                      )}
                     >
                       <LogOut className="w-4 h-4" />
                       Logout
@@ -355,7 +386,7 @@ const Sidebar = ({ mobileOpen = false, onMobileOpenChange }: TaskerDashboardSide
         </div>
 
         <div className="overflow-auto pr-1 -mr-1 flex-1">
-          <ul className="text-base font-bold flex-1 space-y-1">
+          <ul className="flex-1 space-y-1">
             {navigation.slice(0, 1).map((item, idx) => {
               const isActive = pathname === item.href;
               return (
@@ -364,16 +395,16 @@ const Sidebar = ({ mobileOpen = false, onMobileOpenChange }: TaskerDashboardSide
                     href={item.href}
                     onClick={closeMobileNav}
                     className={cn(
-                      "flex items-center gap-x-3 text-gray-500 p-3 rounded-xl hover:bg-white hover:text-blue-950 hover:shadow-sm duration-150 transition-all",
-                      isActive && "bg-white text-blue-950 shadow-sm"
+                      navItemBase,
+                      navLabel,
+                      'text-sm',
+                      isActive ? navItemActive : navItemIdle,
                     )}
                   >
                     <div
                       className={cn(
-                        "transition-colors",
-                        item.icon
-                          ? "text-gray-400 group-hover:text-primary"
-                          : ""
+                        'transition-colors',
+                        isActive ? 'text-primary' : navText,
                       )}
                     >
                       {item.icon}
@@ -400,16 +431,16 @@ const Sidebar = ({ mobileOpen = false, onMobileOpenChange }: TaskerDashboardSide
                     href={item.href}
                     onClick={closeMobileNav}
                     className={cn(
-                      "flex items-center gap-x-3 text-gray-500 p-3 rounded-xl hover:bg-white hover:text-blue-950 hover:shadow-sm duration-150 transition-all",
-                      isActive && "bg-white text-blue-950 shadow-sm"
+                      navItemBase,
+                      navLabel,
+                      'text-sm',
+                      isActive ? navItemActive : navItemIdle,
                     )}
                   >
                     <div
                       className={cn(
-                        "transition-colors",
-                        item.icon
-                          ? "text-gray-400 group-hover:text-primary"
-                          : ""
+                        'transition-colors',
+                        isActive ? 'text-primary' : navText,
                       )}
                     >
                       {item.icon}
@@ -422,7 +453,7 @@ const Sidebar = ({ mobileOpen = false, onMobileOpenChange }: TaskerDashboardSide
           </ul>
 
           <div>
-            <ul className="text-base font-bold space-y-1">
+            <ul className="space-y-1">
               {navsFooter.map((item, idx) => {
                 const isActive = pathname === item.href;
                 return (
@@ -431,11 +462,20 @@ const Sidebar = ({ mobileOpen = false, onMobileOpenChange }: TaskerDashboardSide
                       href={item.href}
                       onClick={closeMobileNav}
                       className={cn(
-                        "flex items-center gap-x-3 text-gray-500 p-3 rounded-xl hover:bg-white hover:text-blue-950 hover:shadow-sm duration-150 transition-all",
-                        isActive && "bg-white text-blue-950 shadow-sm"
+                        navItemBase,
+                        navLabel,
+                        'text-sm',
+                        isActive ? navItemActive : navItemIdle,
                       )}
                     >
-                      <div className="text-gray-400">{item.icon}</div>
+                      <div
+                        className={cn(
+                          'transition-colors',
+                          isActive ? 'text-primary' : navText,
+                        )}
+                      >
+                        {item.icon}
+                      </div>
                       {item.name}
                     </Link>
                   </li>
@@ -456,8 +496,13 @@ const Sidebar = ({ mobileOpen = false, onMobileOpenChange }: TaskerDashboardSide
 
         {/* Support Section at Bottom */}
         <div className="mt-auto px-2">
-          <button className="w-full flex items-center justify-center gap-2 py-4 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-blue-500/10 hover:opacity-90 transition-all active:scale-[0.98]">
-            <HelpCircle className="w-5 h-5" />
+          <button
+            className={cn(
+              navLabel,
+              'flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-4 text-sm font-medium text-white shadow-lg shadow-blue-500/10 transition-all hover:opacity-90 active:scale-[0.98]',
+            )}
+          >
+            <HelpCircle className="h-5 w-5" />
             <span>Support Help</span>
           </button>
         </div>
