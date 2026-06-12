@@ -16,7 +16,7 @@ type TransportOption = {
   icon: LucideIcon;
 };
 
-const TRANSPORT_OPTIONS: TransportOption[] = [
+export const TRANSPORT_OPTIONS: TransportOption[] = [
   { id: 'Bicycle', label: 'Bicycle', icon: Bike },
   { id: 'Car', label: 'Car', icon: Car },
   { id: 'Online', label: 'Online', icon: Monitor },

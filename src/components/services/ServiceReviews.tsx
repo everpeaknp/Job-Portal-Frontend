@@ -1,8 +1,13 @@
 'use client';
 
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useCallback, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import { Star, ArrowUpRight, ThumbsUp, ThumbsDown, Filter, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useProfileReviewActions } from '@/hooks/useProfileReviewActions';
+import { mapApiReviewToProfileRow } from '@/lib/profileReviewDisplay';
+import { reviewService } from '@/services/review.service';
+import { useAuthStore } from '@/store/auth.store';
 import { buildServiceReviews, type Service, type ServiceReviewItem } from './serviceListData';
 
 interface ServiceReview extends ServiceReviewItem {
@@ -32,28 +37,86 @@ export default function ServiceReviews({
   showToast = () => {},
 }: ServiceReviewsProps) {
   const initialRating = service.rating;
+  const preferApiReviews = Boolean(service.slug);
   const [reviews, setReviews] = useState<ServiceReview[]>([]);
   const [filterStar, setFilterStar] = useState<StarFilter>('All');
   const [sortParam, setSortParam] = useState<SortParam>('newest');
   const [userRating, setUserRating] = useState(1);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
-  const [reviewerName, setReviewerName] = useState('');
-  const [reviewerEmail, setReviewerEmail] = useState('');
   const [reviewComment, setReviewComment] = useState('');
-  const [saveDetails, setSaveDetails] = useState(false);
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_REVIEWS);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [userAlreadyReviewed, setUserAlreadyReviewed] = useState(false);
+  const router = useRouter();
+  const { user, isAuthenticated } = useAuthStore();
+
+  const handleReviewCreated = useCallback((review: ServiceReview) => {
+    setReviews((prev) => [review, ...prev]);
+  }, []);
+
+  const { voteReview, reportReview } = useProfileReviewActions({
+    showToast,
+  });
 
   useEffect(() => {
-    setReviews(buildServiceReviews(service));
-    setReviewerName('');
-    setReviewerEmail('');
+    if (!preferApiReviews) {
+      setReviews(buildServiceReviews(service));
+      setUserRating(1);
+      setReviewComment('');
+      setFilterStar('All');
+      setSortParam('newest');
+      setVisibleCount(INITIAL_VISIBLE_REVIEWS);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingReviews(true);
+
+    const load = service.slug
+      ? reviewService.getServiceReviews(service.slug)
+      : reviewService.getTaskReviews(service.id);
+
+    void load
+      .then((res) => {
+        if (cancelled) return;
+        if (res.success && res.data?.results) {
+          const results = res.data.results;
+          setUserAlreadyReviewed(
+            Boolean(
+              user &&
+                results.some((item) => String(item.reviewer?.id ?? '') === String(user.id)),
+            ),
+          );
+          setReviews(results.map((item) => mapApiReviewToProfileRow(item, 'Client')));
+        } else if (service.reviewsData?.length) {
+          setUserAlreadyReviewed(false);
+          setReviews(service.reviewsData);
+        } else {
+          setUserAlreadyReviewed(false);
+          setReviews([]);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setUserAlreadyReviewed(false);
+          setReviews(service.reviewsData?.length ? service.reviewsData : []);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingReviews(false);
+      });
+
     setUserRating(1);
     setReviewComment('');
-    setSaveDetails(false);
     setFilterStar('All');
     setSortParam('newest');
     setVisibleCount(INITIAL_VISIBLE_REVIEWS);
-  }, [service]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [preferApiReviews, service, user]);
 
   const calculatedCount = reviews.length;
   const calculatedAverage =
@@ -68,17 +131,72 @@ export default function ServiceReviews({
     return Math.round((count / reviews.length) * 100);
   };
 
-  const handleAddReview = (e: FormEvent) => {
+  const handleAddReview = async (e: FormEvent) => {
     e.preventDefault();
-    if (!reviewerName.trim() || !reviewComment.trim()) {
-      showToast('Please fill out both the Name and Review Comments fields.');
+    if (preferApiReviews) {
+      if (!isAuthenticated) {
+        showToast('Sign in to leave a review.');
+        router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+        return;
+      }
+      if (!service.slug) {
+        showToast('Could not submit your review.');
+        return;
+      }
+      if (!reviewComment.trim()) {
+        showToast('Please add a comment to your review.');
+        return;
+      }
+      if (userRating < 1) {
+        showToast('Please select a star rating.');
+        return;
+      }
+
+      setSubmitting(true);
+      try {
+        const res = await reviewService.createServiceReview(service.slug, {
+          rating: userRating,
+          comment: reviewComment.trim(),
+        });
+        if (res.success && res.data) {
+          const row = mapApiReviewToProfileRow(res.data, 'Client');
+          handleReviewCreated(row);
+          setUserAlreadyReviewed(true);
+          showToast('Thank you! Your review has been published.');
+          setUserRating(1);
+          setReviewComment('');
+          return;
+        }
+        const duplicateMessage =
+          res.errors &&
+          Object.values(res.errors)
+            .flat()
+            .find((message) => /already submitted/i.test(message));
+        showToast(duplicateMessage || res.message || 'Could not submit your review.');
+        if (duplicateMessage) {
+          setUserAlreadyReviewed(true);
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Could not submit your review.';
+        showToast(message);
+        if (/already submitted/i.test(message)) {
+          setUserAlreadyReviewed(true);
+        }
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    if (!reviewComment.trim()) {
+      showToast('Please fill out the review comment field.');
       return;
     }
 
     const newReview: ServiceReview = {
       id: `user-rev-${Date.now()}`,
-      reviewerName: reviewerName.trim(),
-      reviewerRole: reviewerEmail.trim() || 'Client',
+      reviewerName: 'Guest',
+      reviewerRole: 'Client',
       rating: userRating,
       date: formatReviewDate(new Date()),
       comment: reviewComment.trim(),
@@ -88,15 +206,17 @@ export default function ServiceReviews({
 
     setReviews((prev) => [newReview, ...prev]);
     showToast('Thank you! Your feedback has been published successfully.');
-    if (!saveDetails) {
-      setReviewerName('');
-      setReviewerEmail('');
-    }
     setUserRating(1);
     setReviewComment('');
   };
 
   const handleVote = (reviewId: string, type: 'like' | 'dislike') => {
+    if (preferApiReviews) {
+      const current = reviews.find((r) => r.id === reviewId);
+      void voteReview(reviewId, type, setReviews, current?.userVoted);
+      return;
+    }
+
     setReviews((prev) =>
       prev.map((r) => {
         if (r.id !== reviewId) return r;
@@ -128,6 +248,13 @@ export default function ServiceReviews({
   };
 
   const handleFlagReview = (reviewId: string) => {
+    if (preferApiReviews) {
+      const current = reviews.find((r) => r.id === reviewId);
+      if (current?.isFlagged) return;
+      void reportReview(reviewId, setReviews);
+      return;
+    }
+
     setReviews((prev) =>
       prev.map((r) => {
         if (r.id !== reviewId) return r;
@@ -253,7 +380,11 @@ export default function ServiceReviews({
         </div>
 
         <div className="space-y-6">
-          {sortedReviews.length === 0 ? (
+          {loadingReviews ? (
+            <div className="rounded-2xl bg-neutral-50 py-12 text-center text-xs font-normal text-neutral-400">
+              Loading reviews…
+            </div>
+          ) : sortedReviews.length === 0 ? (
             <div className="rounded-2xl bg-neutral-50 py-12 text-center text-xs font-normal text-neutral-400">
               No matching review ratings found here yet.
             </div>
@@ -376,8 +507,10 @@ export default function ServiceReviews({
           <div className="space-y-2">
             <h3 className="text-xl font-normal tracking-tight text-black">Add a Review</h3>
             <p className="text-sm text-neutral-500">
-              Your email address will not be published. Required fields are marked{' '}
-              <span className="text-neutral-800">*</span>
+              {preferApiReviews
+                ? 'Share your experience with this service. Sign in to publish your review.'
+                : 'Your email address will not be published. Required fields are marked '}
+              {!preferApiReviews ? <span className="text-neutral-800">*</span> : null}
             </p>
           </div>
 
@@ -421,52 +554,22 @@ export default function ServiceReviews({
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label htmlFor="service-reviewer-name" className="block text-sm font-normal text-black">
-                Name
-              </label>
-              <input
-                id="service-reviewer-name"
-                type="text"
-                required
-                value={reviewerName}
-                onChange={(e) => setReviewerName(e.target.value)}
-                placeholder="Ali Tufan"
-                className="w-full rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-800 outline-none transition-colors focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="service-reviewer-email" className="block text-sm font-normal text-black">
-                Email
-              </label>
-              <input
-                id="service-reviewer-email"
-                type="email"
-                value={reviewerEmail}
-                onChange={(e) => setReviewerEmail(e.target.value)}
-                placeholder="creativelayers088"
-                className="w-full rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-800 outline-none transition-colors focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-              />
-            </div>
-          </div>
-
-          <label className="flex cursor-pointer items-start gap-3 text-sm text-neutral-600">
-            <input
-              type="checkbox"
-              checked={saveDetails}
-              onChange={(e) => setSaveDetails(e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border-neutral-300 text-emerald-600 focus:ring-emerald-500"
-            />
-            <span>
-              Save my name, email, and website in this browser for the next time I comment.
-            </span>
-          </label>
+          {preferApiReviews ? (
+            <>
+              {!isAuthenticated ? (
+                <p className="text-sm text-neutral-600">Sign in to leave a review.</p>
+              ) : userAlreadyReviewed ? (
+                <p className="text-sm text-neutral-600">
+                  Your review is already published above.
+                </p>
+              ) : null}
+            </>
+          ) : null}
 
           <button
             type="submit"
-            className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#5BBB7B] px-6 py-3 text-sm font-normal text-white transition-colors hover:bg-[#4da86c]"
+            disabled={preferApiReviews && (submitting || (isAuthenticated && userAlreadyReviewed))}
+            className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#5BBB7B] px-6 py-3 text-sm font-normal text-white transition-colors hover:bg-[#4da86c] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <span>Send</span>
             <ArrowUpRight className="h-4 w-4 stroke-[2.5]" />

@@ -62,6 +62,78 @@ export interface ActiveTaskSummary {
   currency: string;
 }
 
+export type DashboardStatCard = {
+  title: string;
+  value: string;
+  change_val: string;
+  change_text: string;
+};
+
+export type DashboardChartPoint = {
+  month: string;
+  val: number;
+};
+
+export type DashboardOverviewService = {
+  id: string;
+  slug: string;
+  title: string;
+  rating: number;
+  views: number;
+  starting_price: number;
+  currency: string;
+  image: string;
+};
+
+export type DashboardRecentPurchase = {
+  buyer_name: string;
+  task_title: string;
+  amount: number;
+  currency: string;
+  date: string;
+  avatar_initial: string;
+  avatar_url?: string;
+};
+
+export type DashboardRecentCompletedProject = {
+  client_name: string;
+  project_title: string;
+  amount: number;
+  currency: string;
+  date: string;
+  avatar_initial: string;
+  avatar_url?: string;
+  slug: string;
+};
+
+export type DashboardRecentActivity = {
+  time: string;
+  title: string;
+  subtitle: string;
+  color: string;
+};
+
+export type DashboardOverviewPayload = {
+  stat_cards: DashboardStatCard[];
+  profile_views_chart: DashboardChartPoint[];
+  traffic: {
+    direct: number;
+    referral: number;
+    organic: number;
+    direct_percent: number;
+    referral_percent: number;
+    organic_percent: number;
+  };
+  most_viewed_services: DashboardOverviewService[];
+  recent_purchases: DashboardRecentPurchase[];
+  recent_completed_projects: DashboardRecentCompletedProject[];
+  recent_activity: DashboardRecentActivity[];
+};
+
+export type DashboardOverviewResponse = UserStats & {
+  overview: DashboardOverviewPayload;
+};
+
 export interface UserStats {
   role: 'customer' | 'tasker';
   tasks?: {
@@ -175,6 +247,10 @@ class DashboardService {
    */
   async getMyStats(): Promise<ApiResponse<UserStats>> {
     return apiClient.get(`${this.BASE_PATH}/my_stats/`);
+  }
+
+  async getMyOverview(): Promise<ApiResponse<DashboardOverviewResponse>> {
+    return apiClient.get(`${this.BASE_PATH}/my_overview/`);
   }
 
   /**

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { motion } from 'motion/react';
 import { ArrowUpRight } from 'lucide-react';
+import EmployerAvatarCircle from '@/components/employers/EmployerAvatarCircle';
 import { resolveEmployerProfileHref } from '@/components/employers/employerSlug';
 import JobCompanyLogo from './JobCompanyLogo';
 import {
@@ -28,6 +29,22 @@ export default function JobProfileHero({ job, onApply }: JobProfileHeroProps) {
     companyName: job.companyName,
     allowDemoLookup: true,
   });
+
+  const employerAvatar = (
+    <div className="relative shrink-0">
+      <EmployerAvatarCircle
+        name={job.employerLogoText || job.companyName}
+        avatarUrl={job.ownerAvatarUrl}
+        avatarBg={job.companyLogoBg}
+        verified={job.verified}
+        sizeClass="h-14 w-14 sm:h-16 sm:w-16"
+        textClass="text-base font-semibold sm:text-lg"
+        useDemoIcon={!job.slug}
+        iconType={job.companyIconType}
+        renderIcon={(type, className) => <JobCompanyLogo type={type} className={className} />}
+      />
+    </div>
+  );
 
   return (
     <section className="w-full">
@@ -56,18 +73,13 @@ export default function JobProfileHero({ job, onApply }: JobProfileHeroProps) {
             {employerHref ? (
               <Link
                 href={employerHref}
-                className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.12)] transition-opacity hover:opacity-80 sm:h-16 sm:w-16 ${job.companyLogoBg}`}
+                className="transition-opacity hover:opacity-80"
                 title={job.companyName}
               >
-                <JobCompanyLogo type={job.companyIconType} className="h-7 w-7 text-white sm:h-8 sm:w-8" />
+                {employerAvatar}
               </Link>
             ) : (
-              <div
-                className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.12)] sm:h-16 sm:w-16 ${job.companyLogoBg}`}
-                title={job.companyName}
-              >
-                <JobCompanyLogo type={job.companyIconType} className="h-7 w-7 text-white sm:h-8 sm:w-8" />
-              </div>
+              employerAvatar
             )}
 
             <div className="min-w-0 flex-1">

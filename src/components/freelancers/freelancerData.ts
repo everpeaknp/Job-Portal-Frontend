@@ -295,6 +295,8 @@ export interface FreelancerReviewItem {
   comment: string;
   likes: number;
   dislikes: number;
+  userVoted?: 'like' | 'dislike';
+  isFlagged?: boolean;
 }
 
 const FREELANCER_REVIEWER_NAMES = [

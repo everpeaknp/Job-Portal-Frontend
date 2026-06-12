@@ -19,7 +19,8 @@ export function findEmployerBySlug(slug: string, employers: Employer[] = DEFAULT
 }
 
 export function getEmployerProfilePath(employer: Employer): string {
-  return `/employers/${getEmployerSlug(employer)}`;
+  const slug = employer.slug?.trim().toLowerCase() || getEmployerSlug(employer);
+  return `/employers/${encodeURIComponent(slug)}`;
 }
 
 const COMPANY_EMPLOYER_IDS: Record<string, string> = {

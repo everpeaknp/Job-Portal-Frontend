@@ -10,8 +10,6 @@ import {
   Settings,
   LogOut,
   LayoutDashboard,
-  Briefcase,
-  Bookmark,
 } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
@@ -349,10 +347,6 @@ export default function Navbar() {
     router.push('/task');
   };
 
-  const handleBrowseMembersClick = () => {
-    router.push('/users');
-  };
-
   const handleMyTasksClick = () => {
     if (!isAuthenticated) {
       router.push('/signin?redirect=/my-tasks');
@@ -369,8 +363,6 @@ export default function Navbar() {
   const isBrowseTasksActive =
     pathname === '/task' ||
     (pathname.startsWith('/task/') && !pathname.startsWith('/tasker-dashboard'));
-  const isBrowseMembersActive =
-    pathname === '/users' || pathname.startsWith('/users/');
   const isMyTasksActive =
     pathname === '/my-tasks' || pathname.startsWith('/my-tasks/');
 
@@ -465,15 +457,6 @@ export default function Navbar() {
                     {myTasksCount}
                   </span>
                 )}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleBrowseMembersClick}
-                className={navLinkClass(isBrowseMembersActive)}
-                aria-current={isBrowseMembersActive ? 'page' : undefined}
-              >
-                Browse members
               </button>
               </>
             )}
@@ -694,7 +677,7 @@ export default function Navbar() {
 
                     if (typeof window !== 'undefined' && window.innerWidth < 768) {
                       setProfileMenuOpen(false);
-                      router.push('/tasker-dashboard');
+                      router.push('/dashboard');
                       return;
                     }
 
@@ -728,7 +711,7 @@ export default function Navbar() {
                       <button
                         onClick={() => {
                           setProfileMenuOpen(false);
-                          router.push('/tasker-dashboard');
+                          router.push('/dashboard');
                         }}
                         className="w-full flex items-center space-x-3 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition cursor-pointer"
                       >
@@ -739,29 +722,7 @@ export default function Navbar() {
                       <button
                         onClick={() => {
                           setProfileMenuOpen(false);
-                          router.push('/my-tasks');
-                        }}
-                        className="w-full flex items-center space-x-3 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition cursor-pointer"
-                      >
-                        <Briefcase className="h-4 w-4 text-gray-400" />
-                        <span>My Tasks</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setProfileMenuOpen(false);
-                          router.push('/bookmarks');
-                        }}
-                        className="w-full flex items-center space-x-3 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition cursor-pointer"
-                      >
-                        <Bookmark className="h-4 w-4 text-gray-400" />
-                        <span>My bookmarks</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setProfileMenuOpen(false);
-                          router.push('/tasker-dashboard/settings');
+                          router.push('/dashboard/settings');
                         }}
                         className="w-full flex items-center space-x-3 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition cursor-pointer"
                       >

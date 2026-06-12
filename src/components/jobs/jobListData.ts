@@ -2,6 +2,8 @@ export interface Job {
   id: string;
   /** Backend task slug for API-backed jobs */
   slug?: string;
+  /** Task owner user id (for apply / ownership checks) */
+  ownerId?: string;
   title: string;
   category: string;
   companyName: string;
@@ -9,6 +11,10 @@ export interface Job {
   employerSlug?: string;
   companyLogoBg: string;
   companyIconType: 'wave' | 'face' | 'in' | 'clover';
+  /** Employer business logo or profile photo from API */
+  ownerAvatarUrl?: string;
+  /** Initials / logo text when no image is available */
+  employerLogoText?: string;
   verified: boolean;
   location: 'Remote' | 'Hybrid' | 'In-office';
   duration: string;
@@ -356,7 +362,7 @@ export function getJobHoursLabel(job: Job): string {
 }
 
 export function getJobSalaryLabel(job: Job): string {
-  return `${job.budgetLabel} ${job.type}`;
+  return job.budgetLabel;
 }
 
 const JOB_DESCRIPTION_PARAGRAPHS = [

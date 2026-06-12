@@ -7,14 +7,19 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
   FileText,
+  FolderKanban,
   Loader2,
   MapPin,
   Trash2,
+  Wrench,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { resolveOwnerAvatarBg, resolveOwnerInitials } from '@/lib/employerAvatarUtils';
 import { formatNPR, shortenCommaSeparatedLocation } from '@/lib/nepalLocale';
+import { getMediaUrl } from '@/lib/utils';
 import { bidService, extractBidList, sortBidsByIdAlphanumeric } from '@/services/bid.service';
 import type { Bid, BidStatus } from '@/types';
 import DeleteConfirmModal from './DeleteConfirmModal';
@@ -28,14 +33,38 @@ const PROPOSAL_FILTER_TABS: { key: ProposalFilter; label: string }[] = [
   { key: 'cancelled', label: 'Cancelled' },
 ];
 
+type ProposalType = 'job' | 'service' | 'project' | 'task';
+
+type ProposalTypeFilter = 'all' | ProposalType;
+
+const PROPOSAL_TYPE_TABS: { key: ProposalTypeFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'job', label: 'Job' },
+  { key: 'service', label: 'Services' },
+  { key: 'project', label: 'Project' },
+  { key: 'task', label: 'Task' },
+];
+
+const PROPOSAL_TYPE_LABELS: Record<ProposalType, string> = {
+  job: 'Job',
+  service: 'Service',
+  project: 'Project',
+  task: 'Task',
+};
+
 type ProposalRowBase = {
   id: string;
+  listingType: ProposalType;
   location: string;
   date: string;
   status: string;
   rawStatus: BidStatus;
   amountLabel: string;
   rateType: string;
+  avatarUrl?: string;
+  logoText?: string;
+  logoColor?: string;
+  ownerName?: string;
 };
 
 type EmployerRow = ProposalRowBase & {
@@ -88,11 +117,137 @@ function formatProposalLocation(value?: string | null): string {
   return shortenCommaSeparatedLocation(raw, 1);
 }
 
-function emptyMessageForFilter(filter: ProposalFilter, isCustomer: boolean): string {
-  const scope = isCustomer ? 'proposals on your projects' : 'proposals';
-  if (filter === 'pending') return `No pending ${scope}.`;
-  if (filter === 'accepted') return `No accepted ${scope}.`;
-  return `No cancelled ${scope}.`;
+function resolveProposalType(listingKind?: string | null): ProposalType {
+  if (listingKind === 'job') return 'job';
+  if (listingKind === 'service') return 'service';
+  if (listingKind === 'project') return 'project';
+  return 'task';
+}
+
+function matchesProposalType(listingType: ProposalType, filter: ProposalTypeFilter): boolean {
+  if (filter === 'all') return true;
+  return listingType === filter;
+}
+
+function getPublicListingHref(type: ProposalType, slug: string): string {
+  switch (type) {
+    case 'job':
+      return `/jobs/${slug}`;
+    case 'service':
+      return `/services/${slug}`;
+    case 'project':
+      return `/projects/${slug}`;
+    case 'task':
+      return `/task/${slug}`;
+  }
+}
+
+function proposalTypeIcon(type: ProposalType) {
+  switch (type) {
+    case 'job':
+      return Briefcase;
+    case 'service':
+      return Wrench;
+    case 'project':
+      return FolderKanban;
+    case 'task':
+      return ClipboardList;
+  }
+}
+
+function proposalTypeIconClass(type: ProposalType): string {
+  switch (type) {
+    case 'job':
+      return 'bg-[#4B43DF]';
+    case 'service':
+      return 'bg-[#0f766e]';
+    case 'project':
+      return 'bg-[#4B43DF]';
+    case 'task':
+      return 'bg-neutral-700';
+  }
+}
+
+function ProposalListAvatar({
+  row,
+  variant,
+}: {
+  row: EmployerRow | FreelancerRow;
+  variant: 'employer' | 'freelancer';
+}) {
+  const listingType = row.listingType;
+  const TypeIcon = proposalTypeIcon(listingType);
+  const iconBg = proposalTypeIconClass(listingType);
+  const avatarSrc = row.avatarUrl?.trim() ? getMediaUrl(row.avatarUrl) : '';
+
+  if (variant === 'employer') {
+    const employerRow = row as EmployerRow;
+    if (avatarSrc) {
+      return (
+        <img
+          src={avatarSrc}
+          alt=""
+          className="h-14 w-14 shrink-0 rounded-full object-cover ring-1 ring-neutral-100"
+          referrerPolicy="no-referrer"
+        />
+      );
+    }
+    return (
+      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-teal-600 text-sm font-semibold text-white ring-1 ring-neutral-100">
+        {resolveOwnerInitials(employerRow.freelancerName)}
+      </div>
+    );
+  }
+
+  if (avatarSrc) {
+    return (
+      <img
+        src={avatarSrc}
+        alt=""
+        className="h-14 w-14 shrink-0 rounded-full object-cover ring-1 ring-neutral-100"
+        referrerPolicy="no-referrer"
+      />
+    );
+  }
+
+  const displayName = row.ownerName?.trim() || row.projectTitle;
+  const initials = (row.logoText?.trim() || resolveOwnerInitials(displayName)).slice(0, 2).toUpperCase();
+  if (initials) {
+    return (
+      <div
+        className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full font-serif text-sm font-black text-white ring-1 ring-neutral-100 ${resolveOwnerAvatarBg(displayName)}`}
+      >
+        {initials}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full ${iconBg}`}
+    >
+      <TypeIcon className="h-5 w-5 text-white" strokeWidth={2} />
+    </div>
+  );
+}
+
+function statusBadgeClass(rawStatus: BidStatus): string {
+  if (rawStatus === 'accepted') return 'bg-emerald-50 text-emerald-700';
+  if (rawStatus === 'pending') return 'bg-amber-50 text-amber-800';
+  return 'bg-neutral-100 text-neutral-600';
+}
+
+function emptyMessageForFilter(
+  statusFilter: ProposalFilter,
+  typeFilter: ProposalTypeFilter,
+  isCustomer: boolean,
+): string {
+  const scope = isCustomer ? 'proposals on your listings' : 'proposals';
+  const typeLabel =
+    typeFilter === 'all' ? '' : ` ${PROPOSAL_TYPE_LABELS[typeFilter].toLowerCase()}`;
+  if (statusFilter === 'pending') return `No pending${typeLabel} ${scope}.`;
+  if (statusFilter === 'accepted') return `No accepted${typeLabel} ${scope}.`;
+  return `No cancelled${typeLabel} ${scope}.`;
 }
 
 export default function DashboardProposals() {
@@ -101,6 +256,7 @@ export default function DashboardProposals() {
   const [employerRows, setEmployerRows] = useState<EmployerRow[]>([]);
   const [freelancerRows, setFreelancerRows] = useState<FreelancerRow[]>([]);
   const [activeFilter, setActiveFilter] = useState<ProposalFilter>('pending');
+  const [activeTypeFilter, setActiveTypeFilter] = useState<ProposalTypeFilter>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [withdrawTargetId, setWithdrawTargetId] = useState<string | null>(null);
 
@@ -111,13 +267,14 @@ export default function DashboardProposals() {
     }
 
     const bids = extractBidList(response.data);
-    const projectBids = bids.filter((bid) => bid.task_listing_kind === 'project');
 
-    const rows = projectBids.map((bid: Bid) => ({
+    const rows = bids.map((bid: Bid) => ({
       id: bid.id,
-      projectTitle: bid.task_title || 'Project',
+      listingType: resolveProposalType(bid.task_listing_kind),
+      projectTitle: bid.task_title || 'Listing',
       projectSlug: bid.task_slug,
       freelancerName: getTaskerDisplayName(bid.tasker),
+      avatarUrl: bid.tasker?.profile_image || undefined,
       location: formatProposalLocation(bid.task_city),
       date: formatDisplayDate(bid.created_at),
       status: statusLabel(bid.status),
@@ -136,12 +293,16 @@ export default function DashboardProposals() {
     }
 
     const bids = extractBidList(response.data);
-    const projectBids = bids.filter((bid) => bid.task_listing_kind === 'project');
 
-    const rows = projectBids.map((bid: Bid) => ({
+    const rows = bids.map((bid: Bid) => ({
       id: bid.id,
-      projectTitle: bid.task_title || 'Project',
+      listingType: resolveProposalType(bid.task_listing_kind),
+      projectTitle: bid.task_title || 'Listing',
       projectSlug: bid.task_slug,
+      avatarUrl: bid.task_owner_logo_url || undefined,
+      logoText: bid.task_owner_logo_text || undefined,
+      logoColor: bid.task_owner_logo_color || undefined,
+      ownerName: bid.task_owner_business_name || bid.task_title || undefined,
       location: formatProposalLocation(bid.task_city),
       date: formatDisplayDate(bid.created_at),
       status: statusLabel(bid.status),
@@ -187,8 +348,12 @@ export default function DashboardProposals() {
 
   const rows = useMemo(() => {
     const source = isCustomer ? employerRows : freelancerRows;
-    return source.filter((row) => matchesProposalFilter(row.rawStatus, activeFilter));
-  }, [activeFilter, employerRows, freelancerRows, isCustomer]);
+    return source.filter(
+      (row) =>
+        matchesProposalFilter(row.rawStatus, activeFilter) &&
+        matchesProposalType(row.listingType, activeTypeFilter),
+    );
+  }, [activeFilter, activeTypeFilter, employerRows, freelancerRows, isCustomer]);
 
   const totalPages = Math.max(1, Math.ceil(rows.length / ITEMS_PER_PAGE));
   const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
@@ -220,10 +385,17 @@ export default function DashboardProposals() {
 
   const subtitle = useMemo(() => {
     if (isCustomer) {
-      return 'Review proposals on your posted projects — open a project to accept or reject.';
+      return 'Review proposals on your jobs, services, projects, and tasks — accept or reject from the detail view.';
     }
-    return 'Proposals you have submitted on marketplace projects.';
+    return 'Proposals you have submitted on marketplace jobs, services, projects, and tasks.';
   }, [isCustomer]);
+
+  const typeTabClass = (filter: ProposalTypeFilter) =>
+    `cursor-pointer rounded-full px-4 py-2 text-sm font-normal transition-all outline-none ${
+      activeTypeFilter === filter
+        ? 'bg-black text-white'
+        : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 hover:text-black'
+    }`;
 
   const filterTabClass = (filter: ProposalFilter) =>
     `relative cursor-pointer pb-4 text-[15px] font-normal tracking-tight transition-all outline-none ${
@@ -257,6 +429,22 @@ export default function DashboardProposals() {
       </div>
 
       <div className="rounded-xl bg-white p-6 shadow-[0_2px_12px_rgba(0,0,0,0.01)] sm:p-8 md:p-10">
+        <div className="mb-6 flex flex-wrap gap-2">
+          {PROPOSAL_TYPE_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => {
+                setActiveTypeFilter(tab.key);
+                setCurrentPage(1);
+              }}
+              className={typeTabClass(tab.key)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         <div className="mb-8 flex items-center border-b border-neutral-100">
           <div className="flex flex-wrap gap-6 sm:gap-8">
             {PROPOSAL_FILTER_TABS.map((tab) => (
@@ -276,9 +464,10 @@ export default function DashboardProposals() {
         </div>
 
         <div className="grid grid-cols-12 gap-4 border-b border-neutral-100 pb-4 text-[13px] font-normal text-black select-none">
-          <div className="col-span-12 md:col-span-7">Name</div>
-          <div className="col-span-12 md:col-span-3">Cost / Delivery</div>
-          <div className="col-span-12 text-right md:col-span-2">Action</div>
+          <div className="col-span-12 md:col-span-5">Name</div>
+          <div className="col-span-6 md:col-span-2">Type</div>
+          <div className="col-span-6 md:col-span-2">Status</div>
+          <div className="col-span-12 text-right md:col-span-3">Action</div>
         </div>
 
         <div className="divide-y divide-neutral-100">
@@ -289,20 +478,22 @@ export default function DashboardProposals() {
             </div>
           ) : currentItems.length === 0 ? (
             <div className="py-12 text-center text-sm text-neutral-500">
-              {emptyMessageForFilter(activeFilter, isCustomer)}
+              {emptyMessageForFilter(activeFilter, activeTypeFilter, isCustomer)}
             </div>
           ) : isCustomer ? (
             (currentItems as EmployerRow[]).map((row) => (
               <div key={row.id} className="grid grid-cols-12 items-center gap-4 py-7">
-                <div className="col-span-12 md:col-span-7">
+                <div className="col-span-12 md:col-span-5">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#4B43DF]">
-                      <Briefcase className="h-5 w-5 text-white" strokeWidth={2} />
-                    </div>
+                    <ProposalListAvatar row={row} variant="employer" />
                     <div className="min-w-0 flex-1 space-y-1.5 font-sans">
                       <h4 className="text-[15px] font-medium leading-snug tracking-tight text-black">
                         {row.projectTitle}
                       </h4>
+                      <p className="text-sm font-medium text-black">
+                        {row.amountLabel}
+                        <span className="ml-1.5 text-xs font-normal text-neutral-500">{row.rateType}</span>
+                      </p>
                       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs font-normal tracking-tight text-neutral-800">
                         <span className="flex items-center gap-1 text-neutral-800">
                           <FileText strokeWidth={1.5} className="h-3.5 w-3.5 text-neutral-500" />
@@ -318,23 +509,26 @@ export default function DashboardProposals() {
                           <Calendar strokeWidth={1.5} className="h-3.5 w-3.5 text-neutral-500" />
                           <span>{row.date}</span>
                         </span>
-                        <span className="font-normal text-neutral-300">|</span>
-                        <span className="capitalize text-neutral-800">{row.status}</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="col-span-12 md:col-span-3">
-                  <div className="flex items-center font-sans text-[15px] font-medium text-black">
-                    <span>{row.amountLabel}</span>
-                    <span className="ml-1.5 mt-0.5 text-xs font-normal leading-none text-neutral-500">
-                      {row.rateType}
-                    </span>
-                  </div>
+                <div className="col-span-6 md:col-span-2">
+                  <span className="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-normal text-neutral-700">
+                    {PROPOSAL_TYPE_LABELS[row.listingType]}
+                  </span>
                 </div>
 
-                <div className="col-span-12 md:col-span-2">
+                <div className="col-span-6 md:col-span-2">
+                  <span
+                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-normal capitalize ${statusBadgeClass(row.rawStatus)}`}
+                  >
+                    {row.status}
+                  </span>
+                </div>
+
+                <div className="col-span-12 md:col-span-3">
                   <div className="flex md:justify-end">
                     {row.projectSlug ? (
                       <Link
@@ -351,15 +545,17 @@ export default function DashboardProposals() {
           ) : (
             (currentItems as FreelancerRow[]).map((row) => (
               <div key={row.id} className="grid grid-cols-12 items-center gap-4 py-7">
-                <div className="col-span-12 md:col-span-7">
+                <div className="col-span-12 md:col-span-5">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-teal-600">
-                      <Briefcase className="h-5 w-5 text-white" strokeWidth={2} />
-                    </div>
+                    <ProposalListAvatar row={row} variant="freelancer" />
                     <div className="min-w-0 flex-1 space-y-1.5 font-sans">
                       <h4 className="text-[15px] font-medium leading-snug tracking-tight text-black">
                         {row.projectTitle}
                       </h4>
+                      <p className="text-sm font-medium text-black">
+                        {row.amountLabel}
+                        <span className="ml-1.5 text-xs font-normal text-neutral-500">{row.rateType}</span>
+                      </p>
                       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs font-normal tracking-tight text-neutral-800">
                         <span className="flex items-center gap-1 text-neutral-800">
                           <MapPin strokeWidth={1.5} className="h-3.5 w-3.5 text-neutral-500" />
@@ -370,27 +566,30 @@ export default function DashboardProposals() {
                           <Calendar strokeWidth={1.5} className="h-3.5 w-3.5 text-neutral-500" />
                           <span>{row.date}</span>
                         </span>
-                        <span className="font-normal text-neutral-300">|</span>
-                        <span className="capitalize text-neutral-800">{row.status}</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="col-span-12 md:col-span-3">
-                  <div className="flex items-center font-sans text-[15px] font-medium text-black">
-                    <span>{row.amountLabel}</span>
-                    <span className="ml-1.5 mt-0.5 text-xs font-normal leading-none text-neutral-500">
-                      {row.rateType}
-                    </span>
-                  </div>
+                <div className="col-span-6 md:col-span-2">
+                  <span className="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-normal text-neutral-700">
+                    {PROPOSAL_TYPE_LABELS[row.listingType]}
+                  </span>
                 </div>
 
-                <div className="col-span-12 md:col-span-2">
+                <div className="col-span-6 md:col-span-2">
+                  <span
+                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-normal capitalize ${statusBadgeClass(row.rawStatus)}`}
+                  >
+                    {row.status}
+                  </span>
+                </div>
+
+                <div className="col-span-12 md:col-span-3">
                   <div className="flex gap-2.5 md:justify-end">
                     {row.projectSlug ? (
                       <Link
-                        href={`/projects/${row.projectSlug}`}
+                        href={getPublicListingHref(row.listingType, row.projectSlug)}
                         className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-lg bg-neutral-100 px-3 py-2.5 text-sm font-normal text-neutral-800 transition-all hover:bg-neutral-200"
                       >
                         View

@@ -5,7 +5,9 @@ import { ExternalLink, Heart, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Service } from './serviceListData';
 import { getServiceDetailPath } from './serviceSlug';
-import { toggleServiceSaved, useSavedServiceIds } from './serviceBookmarks';
+import { setServiceSaved, toggleServiceSaved, useSavedServiceIds } from './serviceBookmarks';
+import { taskService } from '@/services';
+import { useAuthStore } from '@/store/auth.store';
 
 interface ServiceShareSaveActionsProps {
   service: Service;
@@ -18,6 +20,8 @@ export default function ServiceShareSaveActions({ service }: ServiceShareSaveAct
   const savedServiceIds = useSavedServiceIds();
   const isSaved = savedServiceIds.includes(service.id);
   const [shareLoading, setShareLoading] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const shareUrl = useMemo(() => {
     if (typeof window === 'undefined') return '';
@@ -58,7 +62,27 @@ export default function ServiceShareSaveActions({ service }: ServiceShareSaveAct
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (service.slug && isAuthenticated) {
+      setSaveLoading(true);
+      try {
+        const response = isSaved
+          ? await taskService.unbookmarkTask(service.slug)
+          : await taskService.bookmarkTask(service.slug);
+        if (response.success) {
+          setServiceSaved(service.id, !isSaved);
+          toast.success(isSaved ? 'Removed from saved services' : 'Service saved');
+        } else {
+          toast.error(response.message || 'Could not update saved services');
+        }
+      } catch {
+        toast.error('Could not update saved services');
+      } finally {
+        setSaveLoading(false);
+      }
+      return;
+    }
+
     const next = toggleServiceSaved(service.id);
     toast.success(next ? 'Service saved' : 'Removed from saved services');
   };
@@ -84,16 +108,21 @@ export default function ServiceShareSaveActions({ service }: ServiceShareSaveAct
 
       <button
         type="button"
-        onClick={handleSave}
-        className="group flex cursor-pointer items-center gap-2.5 outline-none transition-opacity hover:opacity-80"
+        onClick={() => void handleSave()}
+        disabled={saveLoading}
+        className="group flex cursor-pointer items-center gap-2.5 outline-none transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
         aria-label={isSaved ? 'Remove saved service' : 'Save service'}
         aria-pressed={isSaved}
       >
         <span className={circleClass}>
-          <Heart
-            className={`h-4 w-4 ${isSaved ? 'fill-neutral-900 text-neutral-900' : ''}`}
-            strokeWidth={1.5}
-          />
+          {saveLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Heart
+              className={`h-4 w-4 ${isSaved ? 'fill-neutral-900 text-neutral-900' : ''}`}
+              strokeWidth={1.5}
+            />
+          )}
         </span>
         <span className="text-sm font-normal text-neutral-900">Save</span>
       </button>

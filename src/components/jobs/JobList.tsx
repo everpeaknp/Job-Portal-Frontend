@@ -14,6 +14,7 @@ import {
 import { discoverBody, discoverHeadline, discoverMedium } from '@/components/LangingHome/landingTypography';
 import { type Job } from './jobListData';
 import JobCompanyLogo from './JobCompanyLogo';
+import EmployerAvatarCircle from '@/components/employers/EmployerAvatarCircle';
 import { resolveEmployerProfileHref } from '@/components/employers/employerSlug';
 import { getJobDetailPath } from './jobSlug';
 import { fetchPublicJobs } from '@/lib/jobApi';
@@ -443,13 +444,25 @@ export default function JobList({
                   companyName: job.companyName,
                   allowDemoLookup: true,
                 });
+                const employerAvatar = (
+                  <div className="relative shrink-0">
+                    <EmployerAvatarCircle
+                      name={job.employerLogoText || job.companyName}
+                      avatarUrl={job.ownerAvatarUrl}
+                      avatarBg={job.companyLogoBg}
+                      verified={job.verified}
+                      sizeClass="h-[54px] w-[54px]"
+                      useDemoIcon={!job.slug}
+                      iconType={job.companyIconType}
+                      renderIcon={(type, className) => (
+                        <JobCompanyLogo type={type} className={className} />
+                      )}
+                    />
+                  </div>
+                );
                 const employerHeader = (
                   <>
-                    <div
-                      className={`flex h-[54px] w-[54px] items-center justify-center rounded-full text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.12)] ${job.companyLogoBg}`}
-                    >
-                      <JobCompanyLogo type={job.companyIconType} />
-                    </div>
+                    {employerAvatar}
                     <span className="ml-3.5 text-[14px] font-medium text-[#45a874] hover:underline">
                       {job.companyName}
                     </span>

@@ -30,6 +30,7 @@ export interface Job {
   company: string;
   logoColor: string;
   logoInitial: string;
+  logoUrl?: string;
   applications: string;
   createdDate: string;
   expiredDate: string;

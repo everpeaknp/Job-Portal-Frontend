@@ -54,4 +54,8 @@ export interface PublicProfileReview {
     is_verified_tasker?: boolean;
   };
   created_at?: string;
+  helpful_count?: number;
+  not_helpful_count?: number;
+  user_vote?: string | null;
+  is_reported?: boolean;
 }

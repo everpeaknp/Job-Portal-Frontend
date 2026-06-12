@@ -47,6 +47,10 @@ export function normalizePublicReview(review: Review): PublicProfileReview {
     overall_rating?: number;
     review_text?: string;
     reviewed_user?: Review['reviewee'];
+    helpful_count?: number;
+    not_helpful_count?: number;
+    user_vote?: string | null;
+    is_reported?: boolean;
   };
   return {
     id: String(review.id),
@@ -56,6 +60,10 @@ export function normalizePublicReview(review: Review): PublicProfileReview {
     comment: review.comment ?? r.review_text ?? '',
     reviewer: review.reviewer as PublicProfileReview['reviewer'],
     created_at: review.created_at,
+    helpful_count: r.helpful_count,
+    not_helpful_count: r.not_helpful_count,
+    user_vote: r.user_vote,
+    is_reported: r.is_reported,
   };
 }
 

@@ -4,6 +4,7 @@ import type { MouseEvent } from 'react';
 import Link from 'next/link';
 import { discoverBody } from '@/components/LangingHome/landingTypography';
 import JobCompanyLogo from './JobCompanyLogo';
+import EmployerAvatarCircle from '@/components/employers/EmployerAvatarCircle';
 import { getJobDetailPath } from './jobSlug';
 import {
   getJobLocationLabel,
@@ -52,10 +53,19 @@ export default function JobRelatedJobs({ job, relatedJobs = [] }: JobRelatedJobs
                 className="group block rounded-xl border border-gray-200 bg-white p-5 transition-colors hover:border-gray-300 hover:shadow-[0_4px_16px_rgba(0,0,0,0.04)]"
               >
                 <div className="flex items-start gap-4">
-                  <div
-                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.12)] ${relatedJob.companyLogoBg}`}
-                  >
-                    <JobCompanyLogo type={relatedJob.companyIconType} className="h-6 w-6 text-white" />
+                  <div className="relative shrink-0">
+                    <EmployerAvatarCircle
+                      name={relatedJob.employerLogoText || relatedJob.companyName}
+                      avatarUrl={relatedJob.ownerAvatarUrl}
+                      avatarBg={relatedJob.companyLogoBg}
+                      verified={relatedJob.verified}
+                      sizeClass="h-12 w-12"
+                      useDemoIcon={!relatedJob.slug}
+                      iconType={relatedJob.companyIconType}
+                      renderIcon={(type, className) => (
+                        <JobCompanyLogo type={type} className={className} />
+                      )}
+                    />
                   </div>
 
                   <div className="min-w-0 flex-1">

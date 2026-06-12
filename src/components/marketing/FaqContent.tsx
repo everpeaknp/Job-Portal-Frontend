@@ -1,4 +1,9 @@
-const FAQ_ITEMS = [
+'use client';
+
+import { useEffect, useState } from 'react';
+import { faqService } from '@/services/faq.service';
+
+const FALLBACK_FAQ_ITEMS = [
   {
     q: 'How much does it cost to post a task?',
     a: 'Posting a task on tasknepal is free. You only pay when you accept an offer and funds are held securely until the work is completed to your satisfaction.',
@@ -38,9 +43,44 @@ type FaqContentProps = {
 };
 
 export default function FaqContent({ sharpBlack = false }: FaqContentProps) {
+  const [items, setItems] = useState<{ q: string; a: string }[]>([...FALLBACK_FAQ_ITEMS]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void faqService
+      .listGeneralFaq()
+      .then((res) => {
+        if (cancelled) return;
+        if (res.success && res.data?.results?.length) {
+          setItems(
+            res.data.results.map((item) => ({
+              q: item.question,
+              a: item.answer,
+            })),
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setItems([...FALLBACK_FAQ_ITEMS]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (loading) {
+    return <p className="text-sm text-neutral-500">Loading FAQ…</p>;
+  }
+
   return (
     <div className="min-w-0 space-y-3">
-      {FAQ_ITEMS.map((item) => (
+      {items.map((item) => (
         <details
           key={item.q}
           className="group rounded-2xl border border-gray-100 bg-brand-light-bg open:bg-white open:shadow-sm"

@@ -1,6 +1,5 @@
 import type { CreateProjectFormData } from '@/app/dashboard/DashboardCreateProject';
 import type { CreateJobFormData } from '@/app/dashboard/DashboardCreateJob';
-import { dashboardJobStatusToTaskFields } from '@/lib/jobApi';
 import type {
   CreateServiceFormData,
   PackagesConfig,
@@ -31,12 +30,18 @@ export type ListingKind = 'service' | 'project' | 'job';
 
 const LISTING_TAG_PREFIX = 'listing:';
 
-/** Inline SVG placeholder — works offline and when external CDNs are blocked. */
+/** Generic cover when a listing has no uploaded gallery images. */
 export const DEFAULT_SERVICE_IMAGE =
-  'data:image/svg+xml;charset=UTF-8,' +
-  encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200"><rect width="320" height="200" fill="#f5f5f5"/><path d="M96 72h128v56H96z" fill="#e5e5e5" stroke="#d4d4d4"/><circle cx="128" cy="92" r="8" fill="#d4d4d4"/><path d="M96 128l32-28 24 20 16-14 56 22v14H96z" fill="#d4d4d4"/></svg>',
-  );
+  'https://images.unsplash.com/photo-1541462608141-ad4979e458c9?auto=format&fit=crop&w=800&q=80';
+
+export function serviceListingFallbackImage(seedSource: {
+  slug?: string | null;
+  id?: string | null;
+  title?: string | null;
+}): string {
+  const seed = encodeURIComponent(String(seedSource.slug || seedSource.id || seedSource.title || 'service'));
+  return `https://picsum.photos/seed/${seed}/800/600`;
+}
 
 export function parseServiceSkills(value?: string | string[]): string[] {
   if (!value) return [];
@@ -48,6 +53,16 @@ export function parseServiceSkills(value?: string | string[]): string[] {
 }
 
 /** Coerce legacy single-string project fields into multi-select arrays. */
+/** Coerce legacy comma-separated job skills into multi-select arrays. */
+export function normalizeJobFormData(
+  data: Partial<CreateJobFormData> = {},
+): Partial<CreateJobFormData> {
+  return {
+    ...data,
+    skills: parseServiceSkills(data.skills),
+  };
+}
+
 export function normalizeProjectFormData(
   data: Partial<CreateProjectFormData> & {
     language?: string | string[];
@@ -88,7 +103,7 @@ type DashboardMeta = {
 
 export type DashboardListingPayload = Record<string, unknown>;
 
-function getListingKind(task: Task): ListingKind | null {
+export function getListingKind(task: Task): ListingKind | null {
   const fromField = (task as Task & { listing_kind?: string | null }).listing_kind;
   if (fromField) return fromField as ListingKind;
   for (const tag of task.tags ?? []) {
@@ -440,10 +455,6 @@ export function jobFormToTaskPayload(
     DEFAULT_COUNTRY,
   );
 
-  const { is_public } = dashboardJobStatusToTaskFields(
-    data.status || 'Active',
-  );
-
   const due = new Date();
   due.setDate(due.getDate() + 30);
 
@@ -458,26 +469,35 @@ export function jobFormToTaskPayload(
     due_date: due.toISOString(),
     work_type: isRemote ? 'remote' : 'flexible',
     urgency: 'medium',
-    is_public,
+    is_public: true,
     allow_bids: true,
     listing_kind: 'job',
     requirements: buildDashboardMeta({
       form: 'job',
-      jobForm: data,
+      jobForm: { ...data, status: 'Active' },
       category: data.category.trim(),
     }),
   };
 }
 
+function parseSkillsFromDescription(description?: string): string[] {
+  const match = description?.match(/Skills:\s*(.+)/i);
+  if (!match?.[1]) return [];
+  return parseServiceSkills(match[1]);
+}
+
 export function taskToJobFormData(task: Task): Partial<CreateJobFormData> {
   const meta = parseTaskDashboardMeta(task);
   if (meta?.jobForm) {
-    return meta.jobForm;
+    return normalizeJobFormData(meta.jobForm);
   }
 
   const isRemote = task.location_type === 'remote' || task.work_type === 'remote';
+  const skills = parseServiceSkills(meta?.skills).length
+    ? parseServiceSkills(meta?.skills)
+    : parseSkillsFromDescription(task.description);
 
-  return {
+  return normalizeJobFormData({
     title: task.title,
     category: resolveCategoryName(task),
     companyName: task.owner_name || '',
@@ -487,7 +507,8 @@ export function taskToJobFormData(task: Task): Partial<CreateJobFormData> {
     budgetMax: String(Number(task.budget_amount) || ''),
     type: task.budget_type === 'hourly' ? 'Hourly' : 'Fixed Price',
     description: task.description || '',
-  };
+    skills,
+  });
 }
 
 export function taskToServiceFormData(task: Task): Partial<CreateServiceFormData> {

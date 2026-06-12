@@ -437,6 +437,7 @@ export default function TaskDetails({
 
   const canAcceptOfferWithWallet = useCallback(
     (bid: Bid) => {
+      if (bid.task_listing_kind === 'job') return true;
       if (walletAvailableBalance === null) return true;
       return walletAvailableBalance >= Number(bid.amount);
     },

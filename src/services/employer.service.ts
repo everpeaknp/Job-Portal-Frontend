@@ -50,8 +50,13 @@ export interface EmployerReviewDto {
   rating: number;
   comment?: string;
   created_at?: string;
+  task_title?: string;
   reviewer_name?: string;
   reviewer?: { full_name?: string };
+  helpful_count?: number;
+  not_helpful_count?: number;
+  user_vote?: 'helpful' | 'not_helpful' | null;
+  is_reported?: boolean;
 }
 
 export interface EmployerReviewsResponse {
@@ -162,6 +167,27 @@ export const employerService = {
 
   async deleteGalleryImage(imageId: string): Promise<ApiResponse<void>> {
     return apiClient.delete(`/users/me/employer-profile/gallery/${imageId}/`);
+  },
+
+  async getEmployers(
+    params?: Record<string, string | number>,
+  ): Promise<ApiResponse<EmployerListingResponse<EmployerPublicDto>>> {
+    try {
+      return await apiClient.get<EmployerListingResponse<EmployerPublicDto>>('/employers/', {
+        ...PUBLIC_EMPLOYER_GET,
+        params,
+      });
+    } catch (error) {
+      if (isNotFoundError(error) || isUnauthorizedError(error)) {
+        return {
+          success: false,
+          message: getErrorMessage(error, 'Not found'),
+          data: null as EmployerListingResponse<EmployerPublicDto>,
+          errors: null,
+        };
+      }
+      throw error;
+    }
   },
 
   async getEmployerBySlug(slug: string): Promise<ApiResponse<EmployerPublicDto>> {

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import {
   FileText,
   CheckCircle2,
@@ -10,15 +11,72 @@ import {
   Star,
 } from 'lucide-react';
 import type { DashboardTab } from './DashboardSidebar';
-import { formatNPR, legacyUsdToNpr } from '@/lib/nepalLocale';
+import { formatNPR } from '@/lib/nepalLocale';
+import { getMediaUrl } from '@/lib/utils';
+import UserAvatar from '@/components/common/UserAvatar';
+import {
+  dashboardService,
+  type DashboardOverviewPayload,
+  type DashboardStatCard,
+} from '@/services/dashboard.service';
+import { useDashboardSidebarRole } from './DashboardRoleSwitchContext';
+
+const STAT_ICONS = [FileText, CheckCircle2, ThumbsUp, MessageSquareMore] as const;
+
+const FALLBACK_IMAGE =
+  'https://images.unsplash.com/photo-1541462608141-ad4979e458c9?auto=format&fit=crop&w=120&q=80';
+
+const EMPTY_OVERVIEW: DashboardOverviewPayload = {
+  stat_cards: [
+    { title: 'Services Offered', value: '0', change_val: '0', change_text: 'Currently open' },
+    { title: 'Completed Services', value: '0', change_val: '0', change_text: 'Last 30 days' },
+    { title: 'in Queue Services', value: '0', change_val: '0', change_text: 'Pending proposals' },
+    { title: 'Total Review', value: '0', change_val: '0.0', change_text: 'Average rating' },
+  ],
+  profile_views_chart: [
+    { month: 'Jan', val: 0 },
+    { month: 'Feb', val: 0 },
+    { month: 'Mar', val: 0 },
+    { month: 'Apr', val: 0 },
+    { month: 'May', val: 0 },
+    { month: 'Jun', val: 0 },
+    { month: 'Jul', val: 0 },
+    { month: 'Aug', val: 0 },
+    { month: 'Sep', val: 0 },
+    { month: 'Oct', val: 0 },
+    { month: 'Nov', val: 0 },
+    { month: 'Dec', val: 0 },
+  ],
+  traffic: {
+    direct: 0,
+    referral: 0,
+    organic: 0,
+    direct_percent: 50,
+    referral_percent: 25,
+    organic_percent: 25,
+  },
+  most_viewed_services: [],
+  recent_purchases: [],
+  recent_completed_projects: [],
+  recent_activity: [],
+};
 
 interface DashboardOverviewProps {
   onTabChange?: (tab: DashboardTab) => void;
 }
 
-export default function DashboardOverview({ onTabChange: _onTabChange }: DashboardOverviewProps) {
+function formatOverviewDate(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+export default function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
+  const role = useDashboardSidebarRole();
   const [timeRange, setTimeRange] = useState('This Week');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [overview, setOverview] = useState<DashboardOverviewPayload>(EMPTY_OVERVIEW);
   const [hoveredNode, setHoveredNode] = useState<{
     x: number;
     y: number;
@@ -26,51 +84,42 @@ export default function DashboardOverview({ onTabChange: _onTabChange }: Dashboa
     month: string;
   } | null>(null);
 
-  const statCards = [
-    {
-      title: 'Services Offered',
-      value: '25',
-      changeVal: '10',
-      changeText: 'New Offered',
-      icon: FileText,
-    },
-    {
-      title: 'Completed Services',
-      value: '1292',
-      changeVal: '80+',
-      changeText: 'New Completed',
-      icon: CheckCircle2,
-    },
-    {
-      title: 'in Queue Services',
-      value: '182',
-      changeVal: '35+',
-      changeText: 'New Queue',
-      icon: ThumbsUp,
-    },
-    {
-      title: 'Total Review',
-      value: '22,786',
-      changeVal: '290+',
-      changeText: 'New Review',
-      icon: MessageSquareMore,
-    },
-  ];
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    void dashboardService
+      .getMyOverview()
+      .then((res) => {
+        if (cancelled) return;
+        if (res.success && res.data?.overview) {
+          setOverview(res.data.overview);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setOverview(EMPTY_OVERVIEW);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [role]);
 
-  const chartData = [
-    { month: 'Jan', val: 148 },
-    { month: 'Feb', val: 136 },
-    { month: 'Marc', val: 210 },
-    { month: 'April', val: 120 },
-    { month: 'May', val: 160 },
-    { month: 'June', val: 120 },
-    { month: 'July', val: 190 },
-    { month: 'Agust', val: 170 },
-    { month: 'Sept', val: 135 },
-    { month: 'Oct', val: 210 },
-    { month: 'Nov', val: 180 },
-    { month: 'Dec', val: 248 },
-  ];
+  const statCards = useMemo(
+    () =>
+      overview.stat_cards.map((card: DashboardStatCard, index) => ({
+        title: card.title,
+        value: card.value,
+        changeVal: card.change_val,
+        changeText: card.change_text,
+        icon: STAT_ICONS[index] ?? FileText,
+      })),
+    [overview.stat_cards],
+  );
+
+  const chartData = overview.profile_views_chart;
+  const chartMax = Math.max(...chartData.map((point) => point.val), 1);
 
   const svgWidth = 1000;
   const svgHeight = 350;
@@ -80,8 +129,10 @@ export default function DashboardOverview({ onTabChange: _onTabChange }: Dashboa
   const padBottom = 290;
 
   const plottedPoints = chartData.map((d, idx) => {
-    const x = padLeft + (idx / 11) * (padRight - padLeft);
-    const y = padBottom - (d.val / 300) * (padBottom - padTop);
+    const x =
+      padLeft +
+      (chartData.length > 1 ? idx / (chartData.length - 1) : 0) * (padRight - padLeft);
+    const y = padBottom - (d.val / chartMax) * (padBottom - padTop);
     return { x, y, val: d.val, month: d.month };
   });
 
@@ -109,10 +160,25 @@ export default function DashboardOverview({ onTabChange: _onTabChange }: Dashboa
       ? `${linePathD} L ${plottedPoints[plottedPoints.length - 1].x} ${padBottom} L ${plottedPoints[0].x} ${padBottom} Z`
       : '';
 
-  const gridYLabels = [300, 250, 200, 150, 100, 50, 0];
+  const gridYLabels = useMemo(() => {
+    const step = Math.max(Math.ceil(chartMax / 6 / 10) * 10, 10);
+    return Array.from({ length: 7 }, (_, index) => step * (6 - index));
+  }, [chartMax]);
+
+  const traffic = overview.traffic;
+  const circumference = 439.82;
+  const directDash = (traffic.direct_percent / 100) * circumference;
+  const referralDash = (traffic.referral_percent / 100) * circumference;
+  const organicDash = (traffic.organic_percent / 100) * circumference;
+  const middleCardTitle =
+    role === 'tasker' ? 'Recently Done Projects' : 'Recent Purchased Services';
+  const viewAllHref = role === 'tasker' ? '/dashboard/project' : '/dashboard/jobs';
 
   return (
     <div className="animate-in fade-in -mx-4 -my-6 min-h-screen space-y-6 bg-[#f0efec] p-4 font-sans text-black duration-300 sm:-mx-6 sm:p-6 md:-mx-8 md:p-8">
+      {loading ? (
+        <p className="text-sm text-neutral-500">Loading dashboard…</p>
+      ) : null}
       <div className="grid grid-cols-1 gap-[22px] sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((card, idx) => {
           const IconComp = card.icon;
@@ -326,15 +392,15 @@ export default function DashboardOverview({ onTabChange: _onTabChange }: Dashboa
             <div className="mb-5 flex flex-wrap items-center justify-center gap-3 py-1">
               <div className="flex items-center gap-1.5 text-[11px] font-medium text-neutral-500">
                 <span className="inline-block h-2.5 w-5 rounded-xs bg-[#4BBB80]" />
-                <span>Direct 50%</span>
+                <span>Direct {traffic.direct_percent}%</span>
               </div>
               <div className="flex items-center gap-1.5 text-[11px] font-medium text-neutral-500">
                 <span className="inline-block h-2.5 w-5 rounded-xs bg-[#FEECE9]" />
-                <span>Referal 25%</span>
+                <span>Referal {traffic.referral_percent}%</span>
               </div>
               <div className="flex items-center gap-1.5 text-[11px] font-medium text-neutral-500">
                 <span className="inline-block h-2.5 w-5 rounded-xs border border-neutral-200 bg-[#FAF7F0]" />
-                <span>Organic 25%</span>
+                <span>Organic {traffic.organic_percent}%</span>
               </div>
             </div>
 
@@ -347,7 +413,7 @@ export default function DashboardOverview({ onTabChange: _onTabChange }: Dashboa
                     r="70"
                     stroke="#4BBB80"
                     strokeWidth="26"
-                    strokeDasharray="219.91 439.82"
+                    strokeDasharray={`${directDash} ${circumference}`}
                     strokeDashoffset="0"
                     fill="none"
                     className="transition-all duration-300"
@@ -358,8 +424,8 @@ export default function DashboardOverview({ onTabChange: _onTabChange }: Dashboa
                     r="70"
                     stroke="#FEECE9"
                     strokeWidth="26"
-                    strokeDasharray="109.95 439.82"
-                    strokeDashoffset="-219.91"
+                    strokeDasharray={`${referralDash} ${circumference}`}
+                    strokeDashoffset={`-${directDash}`}
                     fill="none"
                     className="transition-all duration-300"
                   />
@@ -369,8 +435,8 @@ export default function DashboardOverview({ onTabChange: _onTabChange }: Dashboa
                     r="70"
                     stroke="#FAF7F0"
                     strokeWidth="26"
-                    strokeDasharray="109.95 439.82"
-                    strokeDashoffset="-329.86"
+                    strokeDasharray={`${organicDash} ${circumference}`}
+                    strokeDashoffset={`-${directDash + referralDash}`}
                     fill="none"
                     className="transition-all duration-300"
                   />
@@ -395,89 +461,53 @@ export default function DashboardOverview({ onTabChange: _onTabChange }: Dashboa
               <h4 className="text-[14px] font-semibold tracking-tight text-black">
                 Most Viewed Services
               </h4>
-              <a href="#view-all" className="text-[11.5px] font-medium text-[#4138C4] hover:underline">
+              <Link href={viewAllHref} className="text-[11.5px] font-medium text-[#4138C4] hover:underline">
                 View All
-              </a>
+              </Link>
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-center gap-3.5 border-b border-neutral-100 pb-4 last:border-0 last:pb-0">
-                <img
-                  src="https://images.unsplash.com/photo-1541462608141-2f58c7340273?auto=format&fit=crop&w=120&q=80"
-                  alt="design figma"
-                  className="h-[50px] w-[72px] shrink-0 rounded-lg object-cover"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <h5
-                    className="line-clamp-2 text-[11.5px] font-medium leading-snug text-black"
-                    title="I will design modern websites in figma or adobe xd"
+              {overview.most_viewed_services.length === 0 ? (
+                <p className="py-6 text-center text-xs text-neutral-400">No listings yet.</p>
+              ) : (
+                overview.most_viewed_services.map((service) => (
+                  <div
+                    key={service.id}
+                    className="flex items-center gap-3.5 border-b border-neutral-100 pb-4 last:border-0 last:pb-0"
                   >
-                    I will design modern websites in figma or adobe xd
-                  </h5>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-0.5 text-[10.5px] font-medium text-amber-500">
-                      <Star className="h-3 w-3 fill-amber-400 stroke-amber-400" />
-                      <span>4.82</span>
+                    <img
+                      src={getMediaUrl(service.image) || FALLBACK_IMAGE}
+                      alt={service.title}
+                      className="h-[50px] w-[72px] shrink-0 rounded-lg object-cover"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = FALLBACK_IMAGE;
+                      }}
+                    />
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <h5
+                        className="line-clamp-2 text-[11.5px] font-medium leading-snug text-black"
+                        title={service.title}
+                      >
+                        {service.title}
+                      </h5>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-0.5 text-[10.5px] font-medium text-amber-500">
+                          <Star className="h-3 w-3 fill-amber-400 stroke-amber-400" />
+                          <span>{service.rating > 0 ? service.rating.toFixed(2) : '—'}</span>
+                        </div>
+                        <span className="text-[10px] font-medium text-neutral-400">
+                          Starting at{' '}
+                          <span className="text-[11px] font-semibold text-black">
+                            {formatNPR(service.starting_price)}
+                          </span>
+                        </span>
+                      </div>
                     </div>
-                    <span className="text-[10px] font-medium text-neutral-400">
-                      Starting at <span className="text-[11px] font-semibold text-black">{formatNPR(legacyUsdToNpr(983))}</span>
-                    </span>
                   </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3.5 border-b border-neutral-100 pb-4 last:border-0 last:pb-0">
-                <img
-                  src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=120&q=80"
-                  alt="flat illustration"
-                  className="h-[50px] w-[72px] shrink-0 rounded-lg object-cover"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <h5
-                    className="line-clamp-2 text-[11.5px] font-medium leading-snug text-black"
-                    title="I will create modern flat design illustration"
-                  >
-                    I will create modern flat design illustration
-                  </h5>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-0.5 text-[10.5px] font-medium text-amber-500">
-                      <Star className="h-3 w-3 fill-amber-400 stroke-amber-400" />
-                      <span>4.82</span>
-                    </div>
-                    <span className="text-[10px] font-medium text-neutral-400">
-                      Starting at <span className="text-[11px] font-semibold text-black">{formatNPR(legacyUsdToNpr(983))}</span>
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3.5 border-b border-neutral-100 pb-4 last:border-0 last:pb-0">
-                <img
-                  src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=120&q=80"
-                  alt="responsive html css"
-                  className="h-[50px] w-[72px] shrink-0 rounded-lg object-cover"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <h5
-                    className="line-clamp-2 text-[11.5px] font-medium leading-snug text-black"
-                    title="I will build a fully responsive design in HTML,CSS, bootstrap, and javascript"
-                  >
-                    I will build a fully responsive design in HTML,CSS, bootstrap, and javascript
-                  </h5>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-0.5 text-[10.5px] font-medium text-amber-500">
-                      <Star className="h-3 w-3 fill-amber-400 stroke-amber-400" />
-                      <span>4.82</span>
-                    </div>
-                    <span className="text-[10px] font-medium text-neutral-400">
-                      Starting at <span className="text-[11px] font-semibold text-black">{formatNPR(legacyUsdToNpr(983))}</span>
-                    </span>
-                  </div>
-                </div>
-              </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -486,87 +516,85 @@ export default function DashboardOverview({ onTabChange: _onTabChange }: Dashboa
           <div>
             <div className="mb-5 flex items-center justify-between border-b border-neutral-100 pb-3.5">
               <h4 className="text-[14px] font-semibold tracking-tight text-black">
-                Recent Purchased Services
+                {middleCardTitle}
               </h4>
-              <a href="#view-all" className="text-[11.5px] font-medium text-[#4138C4] hover:underline">
+              <Link
+                href={viewAllHref}
+                className="text-[11.5px] font-medium text-[#4138C4] hover:underline"
+              >
                 View All
-              </a>
+              </Link>
             </div>
 
             <div className="space-y-[18px]">
-              <div className="flex items-start gap-3 border-b border-neutral-100 pb-[18px] last:border-0 last:pb-0">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1e3e35] text-white">
-                  <svg
-                    className="h-5 w-5 text-emerald-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+              {role === 'tasker' ? (
+                (overview.recent_completed_projects ?? []).length === 0 ? (
+                  <p className="py-6 text-center text-xs text-neutral-400">
+                    No completed projects yet.
+                  </p>
+                ) : (
+                  (overview.recent_completed_projects ?? []).map((project, index) => (
+                    <div
+                      key={`${project.slug}-${index}`}
+                      className="flex items-start gap-3 border-b border-neutral-100 pb-[18px] last:border-0 last:pb-0"
+                    >
+                      <UserAvatar
+                        src={project.avatar_url}
+                        name={project.client_name}
+                        size="md"
+                        className="shrink-0"
+                      />
+                      <div className="flex-1 space-y-1">
+                        <p className="text-[11.5px] leading-snug text-black">
+                          <span className="font-medium text-[#3ca871]">Completed</span>{' '}
+                          {project.project_title}{' '}
+                          <span className="font-medium text-neutral-500">for</span>{' '}
+                          <span className="font-semibold text-black">{project.client_name}</span>
+                        </p>
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="font-medium text-neutral-400">
+                            {formatOverviewDate(project.date)}
+                          </span>
+                          <span className="font-semibold text-black">
+                            {formatNPR(project.amount)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )
+              ) : overview.recent_purchases.length === 0 ? (
+                <p className="py-6 text-center text-xs text-neutral-400">No recent orders yet.</p>
+              ) : (
+                overview.recent_purchases.map((purchase, index) => (
+                  <div
+                    key={`${purchase.date}-${index}`}
+                    className="flex items-start gap-3 border-b border-neutral-100 pb-[18px] last:border-0 last:pb-0"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M13 10V3L4 14h7v7l9-11h-7z"
-                      strokeWidth="1.8"
+                    <UserAvatar
+                      src={purchase.avatar_url}
+                      name={purchase.buyer_name}
+                      size="md"
+                      className="shrink-0"
                     />
-                  </svg>
-                </div>
-                <div className="flex-1 space-y-1">
-                  <p className="text-[11.5px] leading-snug text-black">
-                    <span className="font-semibold text-black">Medium.</span>{' '}
-                    <span className="font-medium text-[#3ca871]">has purchased</span> I will deal
-                    with your item Description and assets
-                  </p>
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-medium text-neutral-400">February 26, 2021</span>
-                    <span className="font-semibold text-black">{formatNPR(legacyUsdToNpr(983))}</span>
+                    <div className="flex-1 space-y-1">
+                      <p className="text-[11.5px] leading-snug text-black">
+                        <span className="font-semibold text-black">{purchase.buyer_name}</span>{' '}
+                        <span className="font-medium text-[#3ca871]">has purchased</span>{' '}
+                        {purchase.task_title}
+                      </p>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-medium text-neutral-400">
+                          {formatOverviewDate(purchase.date)}
+                        </span>
+                        <span className="font-semibold text-black">
+                          {formatNPR(purchase.amount)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 border-b border-neutral-100 pb-[18px] last:border-0 last:pb-0">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white">
-                  <svg
-                    className="h-5 w-5 text-indigo-200"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                </div>
-                <div className="flex-1 space-y-1">
-                  <p className="text-[11.5px] leading-snug text-black">
-                    <span className="font-semibold text-black">Medium.</span>{' '}
-                    <span className="font-medium text-[#3ca871]">has purchased</span> I will deal
-                    with your item Description and assets
-                  </p>
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-medium text-neutral-400">February 26, 2021</span>
-                    <span className="font-semibold text-black">{formatNPR(legacyUsdToNpr(983))}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 border-b border-neutral-100 pb-[18px] last:border-0 last:pb-0">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-500 font-sans text-sm font-semibold tracking-tighter text-white">
-                  in
-                </div>
-                <div className="flex-1 space-y-1">
-                  <p className="text-[11.5px] leading-snug text-black">
-                    <span className="font-semibold text-black">Medium.</span>{' '}
-                    <span className="font-medium text-[#3ca871]">has purchased</span> I will deal
-                    with your item Description and assets
-                  </p>
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-medium text-neutral-400">February 26, 2021</span>
-                    <span className="font-semibold text-black">{formatNPR(legacyUsdToNpr(983))}</span>
-                  </div>
-                </div>
-              </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -583,88 +611,33 @@ export default function DashboardOverview({ onTabChange: _onTabChange }: Dashboa
               <div className="absolute bottom-3 left-[54px] top-2 w-[1.5px] bg-[#f0f0f0]" />
 
               <div className="space-y-4">
-                <div className="flex items-start">
-                  <span className="mr-4 mt-0.5 w-11 whitespace-nowrap text-right text-[10.5px] font-medium text-neutral-400">
-                    08:42
-                  </span>
-                  <div className="relative z-10 mr-3 mt-1 flex h-[18px] w-[18px] items-center justify-center">
-                    <span className="h-3.5 w-3.5 rounded-full border-[3px] border-[#9a0026] bg-white" />
-                  </div>
-                  <div className="flex-1 space-y-0.5">
-                    <p className="text-[11.5px] font-semibold leading-snug text-black">
-                      Purchase by Ali Price
-                    </p>
-                    <p className="text-[10.5px] font-normal leading-normal text-neutral-500">
-                      Product noise evolve smartwatch
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start">
-                  <span className="mr-4 mt-0.5 w-11 whitespace-nowrap text-right text-[10.5px] font-medium text-neutral-400">
-                    14:37
-                  </span>
-                  <div className="relative z-10 mr-3 mt-1 flex h-[18px] w-[18px] items-center justify-center">
-                    <span className="h-3.5 w-3.5 rounded-full border-[3px] border-[#f43f5e] bg-white" />
-                  </div>
-                  <div className="flex-1 space-y-0.5">
-                    <p className="text-[11.5px] font-semibold leading-snug text-black">
-                      Make deposit <span className="font-semibold text-[#4138C4]">{formatNPR(legacyUsdToNpr(700))}</span> to
-                      TFN
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start">
-                  <span className="mr-4 mt-0.5 w-11 whitespace-nowrap text-right text-[10.5px] font-medium text-neutral-400">
-                    16:50
-                  </span>
-                  <div className="relative z-10 mr-3 mt-1 flex h-[18px] w-[18px] items-center justify-center">
-                    <span className="h-3.5 w-3.5 rounded-full border-[3px] border-[#3b82f6] bg-white" />
-                  </div>
-                  <div className="flex-1 space-y-0.5">
-                    <p className="text-[11.5px] font-semibold leading-snug text-black">
-                      Natasha Carey have liked the products
-                    </p>
-                    <p className="text-[10.5px] font-normal leading-normal text-neutral-500">
-                      Allow users to like products in your WooCommerce store.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start">
-                  <span className="mr-4 mt-0.5 w-11 whitespace-nowrap text-right text-[10.5px] font-medium text-neutral-400">
-                    21:03
-                  </span>
-                  <div className="relative z-10 mr-3 mt-1 flex h-[18px] w-[18px] items-center justify-center">
-                    <span className="h-3.5 w-3.5 rounded-full border-[3px] border-[#f97316] bg-white" />
-                  </div>
-                  <div className="flex-1 space-y-0.5">
-                    <p className="text-[11.5px] font-semibold leading-snug text-black">
-                      Favoried Product
-                    </p>
-                    <p className="text-[10.5px] font-normal leading-normal text-neutral-500">
-                      Esther James have favorited product.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start">
-                  <span className="mr-4 mt-0.5 w-11 whitespace-nowrap text-right text-[10.5px] font-medium text-neutral-400">
-                    23:07
-                  </span>
-                  <div className="relative z-10 mr-3 mt-1 flex h-[18px] w-[18px] items-center justify-center">
-                    <span className="h-3.5 w-3.5 rounded-full border-[3px] border-[#8b5cf6] bg-white" />
-                  </div>
-                  <div className="flex-1 space-y-0.5">
-                    <p className="text-[11.5px] font-semibold leading-snug text-black">
-                      Today offers by Digitech Galaxy
-                    </p>
-                    <p className="text-[10.5px] font-normal leading-normal text-neutral-500">
-                      Offer is valid on orders of Rs.500 Or above for selected products only.
-                    </p>
-                  </div>
-                </div>
+                {overview.recent_activity.length === 0 ? (
+                  <p className="py-6 text-center text-xs text-neutral-400">No recent activity yet.</p>
+                ) : (
+                  overview.recent_activity.map((activity, index) => (
+                    <div key={`${activity.time}-${index}`} className="flex items-start">
+                      <span className="mr-4 mt-0.5 w-11 whitespace-nowrap text-right text-[10.5px] font-medium text-neutral-400">
+                        {activity.time}
+                      </span>
+                      <div className="relative z-10 mr-3 mt-1 flex h-[18px] w-[18px] items-center justify-center">
+                        <span
+                          className="h-3.5 w-3.5 rounded-full border-[3px] bg-white"
+                          style={{ borderColor: activity.color }}
+                        />
+                      </div>
+                      <div className="flex-1 space-y-0.5">
+                        <p className="text-[11.5px] font-semibold leading-snug text-black">
+                          {activity.title}
+                        </p>
+                        {activity.subtitle ? (
+                          <p className="text-[10.5px] font-normal leading-normal text-neutral-500">
+                            {activity.subtitle}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>

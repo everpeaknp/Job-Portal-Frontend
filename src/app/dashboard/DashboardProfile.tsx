@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, type FormEvent, type ChangeEvent, type ElementType, type ReactNode } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, type FormEvent, type ChangeEvent, type ElementType, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuthStore } from '@/store';
 import { freelancerService, userService } from '@/services';
@@ -55,6 +55,8 @@ import ProfileFormModal, {
 import Link from 'next/link';
 import { useDashboardSidebarRole } from '@/app/dashboard/DashboardRoleSwitchContext';
 import EmployerBusinessProfileForm from '@/app/dashboard/EmployerBusinessProfileForm';
+import EmployerBusinessCardPreview from '@/app/dashboard/EmployerBusinessCardPreview';
+import FreelancerCvPreview from '@/app/dashboard/FreelancerCvPreview';
 import { getEmployerBusinessProfileHref } from '@/components/employers/employerSlug';
 import { getFreelancerBusinessProfileHref } from '@/components/freelancers/freelancerSlug';
 import { STANDARD_HOURLY_RATE_OPTIONS } from '@/lib/nepalLocale';
@@ -970,6 +972,44 @@ export default function DashboardProfile() {
   const toggleTransport = (id: string) => {
     setTransport((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
   };
+
+  const freelancerCvData = useMemo(
+    () => ({
+      fullName,
+      tagline,
+      email,
+      phone,
+      location: locationType === 'remote' ? 'Remote' : location,
+      avatar,
+      description,
+      hourlyRate,
+      specialization,
+      profileType,
+      skills,
+      languages,
+      education,
+      experience,
+      awards,
+    }),
+    [
+      avatar,
+      awards,
+      description,
+      education,
+      email,
+      experience,
+      fullName,
+      hourlyRate,
+      languages,
+      location,
+      locationType,
+      phone,
+      profileType,
+      skills,
+      specialization,
+      tagline,
+    ],
+  );
 
   return (
     <div className="animate-in fade-in relative -mx-4 -my-6 min-h-screen bg-[#f0efec] px-4 py-4 font-sans text-black duration-300 sm:-mx-6 sm:px-6 sm:py-4 md:-mx-8 md:px-8">
@@ -1896,6 +1936,14 @@ export default function DashboardProfile() {
         </form>
         </ProfileAccordionItem>
         ) : null}
+      </div>
+
+      <div className="mx-auto mb-8 max-w-7xl">
+        {!isEmployerMode ? (
+          <FreelancerCvPreview data={freelancerCvData} />
+        ) : (
+          <EmployerBusinessCardPreview />
+        )}
       </div>
 
       <ProfileFormModal

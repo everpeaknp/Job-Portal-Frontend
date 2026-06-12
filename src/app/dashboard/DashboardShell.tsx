@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Menu } from 'lucide-react';
 import Navbar from '@/components/common/navbar';
 import { useAuthStore } from '@/store/auth.store';
@@ -11,15 +11,29 @@ import { DashboardRoleSwitchProvider } from './DashboardRoleSwitchContext';
 
 function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const refreshUser = useAuthStore((s) => s.refreshUser);
+  const initialize = useAuthStore((s) => s.initialize);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isLoading = useAuthStore((s) => s.isLoading);
   const pathname = usePathname();
+  const router = useRouter();
   const { activeTab, setActiveTab, mobileOpen, setMobileOpen } = useDashboardTab();
+
+  useEffect(() => {
+    void initialize();
+  }, [initialize]);
 
   useEffect(() => {
     if (isAuthenticated) {
       void refreshUser();
     }
   }, [isAuthenticated, refreshUser]);
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!isAuthenticated) {
+      router.replace(`/signin?redirect=${encodeURIComponent(pathname || '/dashboard')}`);
+    }
+  }, [isAuthenticated, isLoading, pathname, router]);
 
   useEffect(() => {
     setMobileOpen(false);

@@ -4,12 +4,9 @@ import type { Service, ServicePackage } from '@/components/services/serviceListD
 
 import {
 
-  DEFAULT_SERVICE_IMAGE,
-
+  serviceListingFallbackImage,
   parseServiceSkills,
-
   parseTaskDashboardMeta,
-
 } from '@/lib/dashboardListingApi';
 
 import { formatTaskLocationShort } from '@/lib/nepalLocale';
@@ -25,6 +22,18 @@ import type { Task, User } from '@/types';
 
 
 const DESIGN_TOOLS = ['Figma', 'Sketch', 'Adobe XD', 'Illustrator', 'Photoshop'] as const;
+
+export function resolveServiceCoverImage(task: Task): string {
+  const primaryImage = getMediaUrl(task.primary_image);
+  if (primaryImage) return primaryImage;
+
+  const attachmentImage = task.attachments
+    ?.map((item) => getMediaUrl(item.file_url))
+    .find((url): url is string => Boolean(url));
+  if (attachmentImage) return attachmentImage;
+
+  return serviceListingFallbackImage(task);
+}
 
 
 
@@ -364,18 +373,11 @@ export function mapTaskToPublicService(task: Task): Service {
   const basePrice = Number(task.budget_amount) || 0;
 
   const images =
-
     task.attachments
-
       ?.map((item) => getMediaUrl(item.file_url))
-
       .filter((url): url is string => Boolean(url)) ?? [];
 
-
-
-  const primaryImage = getMediaUrl(task.primary_image);
-
-  const image = primaryImage || images[0] || DEFAULT_SERVICE_IMAGE;
+  const image = resolveServiceCoverImage(task);
 
   const packagesConfig = meta?.packages;
 
@@ -417,7 +419,7 @@ export function mapTaskToPublicService(task: Task): Service {
 
     image,
 
-    images: images.length ? images : image !== DEFAULT_SERVICE_IMAGE ? [image] : [],
+    images: images.length ? images : [image],
 
     author: {
 

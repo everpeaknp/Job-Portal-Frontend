@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/auth.store';
+import UserAvatar from '@/components/common/UserAvatar';
 import {
   getDashboardHref,
   getNavTabsForRole,
@@ -188,11 +189,11 @@ export default function DashboardSidebar({
                 activeTab === 'profile' ? 'font-semibold text-white' : 'text-black'
               }`}
             >
-              <CircleUser
-                className={`h-[22px] w-[22px] shrink-0 ${
-                  activeTab === 'profile' ? 'text-[#52C47F]' : 'text-black'
-                }`}
-                strokeWidth={1.8}
+              <UserAvatar
+                src={user?.profile_image}
+                name={user ? `${user.first_name} ${user.last_name}` : 'My Profile'}
+                size="xs"
+                className="!h-[22px] !w-[22px] shrink-0"
               />
               <span className="truncate tracking-wide">My Profile</span>
             </Link>

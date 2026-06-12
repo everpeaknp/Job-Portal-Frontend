@@ -1,6 +1,15 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+  type MouseEvent,
+} from 'react';
+import { createPortal } from 'react-dom';
 import {
   AlignLeft,
   ArrowUpRight,
@@ -11,7 +20,9 @@ import {
   ListChecks,
   Plus,
   Trash2,
+  X,
 } from 'lucide-react';
+import { normalizeJobFormData } from '@/lib/dashboardListingApi';
 import FormAccordionSection from './FormAccordionSection';
 import EmployerPostingBanner from '@/components/employers/EmployerPostingBanner';
 import { formatJobBudgetLabel, type Job as PublicJob } from '@/components/jobs/jobListData';
@@ -35,7 +46,7 @@ export type CreateJobFormData = {
   expenseLevel: PublicJob['expenseLevel'] | '';
   hoursLabel: string;
   postedLabel: string;
-  skills: string;
+  skills: string[];
   description: string;
   keyResponsibilities: string[];
   workExperience: string[];
@@ -59,7 +70,7 @@ const EMPTY_CREATE_FORM: CreateJobFormData = {
   expenseLevel: '',
   hoursLabel: '',
   postedLabel: '',
-  skills: '',
+  skills: [],
   description: '',
   keyResponsibilities: [''],
   workExperience: [''],
@@ -89,8 +100,20 @@ const LOGO_BACKGROUNDS = [
   'bg-[#0f766e]',
   'bg-[#1d4ed8]',
 ];
-const DASHBOARD_STATUSES: DashboardJob['status'][] = ['Active', 'Pending', 'Draft', 'Closed', 'Expired'];
-
+const SKILLS = [
+  'Figma',
+  'React',
+  'Node.js',
+  'UI/UX Design',
+  'TypeScript',
+  'PostgreSQL',
+  'Mobile Development',
+  'SEO',
+  'Next.js',
+  'Python',
+  'DevOps',
+  'Project Management',
+];
 const fieldClass =
   'w-full rounded-none border border-neutral-200 bg-white px-4 py-3 text-sm font-normal text-black outline-none transition-colors focus:border-neutral-400';
 const labelClass = 'mb-2 block text-sm font-normal text-neutral-800';
@@ -126,6 +149,153 @@ function SelectField({
           </option>
         ))}
       </select>
+    </div>
+  );
+}
+
+function MultiSelectField({
+  label,
+  value,
+  onChange,
+  placeholder = 'Nothing selected',
+  options,
+}: {
+  label: string;
+  value: string[];
+  onChange: (value: string[]) => void;
+  placeholder?: string;
+  options: string[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
+  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const updatePanelPosition = useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    setPanelStyle({
+      position: 'fixed',
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+      zIndex: 9999,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    updatePanelPosition();
+    window.addEventListener('resize', updatePanelPosition);
+    window.addEventListener('scroll', updatePanelPosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePanelPosition);
+      window.removeEventListener('scroll', updatePanelPosition, true);
+    };
+  }, [open, updatePanelPosition]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: globalThis.MouseEvent) => {
+      const target = event.target as Node;
+      if (containerRef.current?.contains(target) || panelRef.current?.contains(target)) {
+        return;
+      }
+      setOpen(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, [open]);
+
+  const toggle = (option: string) => {
+    if (value.includes(option)) {
+      onChange(value.filter((item) => item !== option));
+      return;
+    }
+    onChange([...value, option]);
+  };
+
+  const remove = (option: string, event: MouseEvent) => {
+    event.stopPropagation();
+    onChange(value.filter((item) => item !== option));
+  };
+
+  return (
+    <div ref={containerRef} className="relative">
+      <label className={labelClass}>{label}</label>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => {
+          setOpen((prev) => {
+            if (!prev) updatePanelPosition();
+            return !prev;
+          });
+        }}
+        className={`${fieldClass} flex min-h-[46px] w-full flex-wrap items-center gap-1.5 text-left`}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+      >
+        {value.length === 0 ? (
+          <span className="text-neutral-400">{placeholder}</span>
+        ) : (
+          value.map((item) => (
+            <span
+              key={item}
+              className="inline-flex items-center gap-1 bg-neutral-100 px-2 py-0.5 text-xs font-normal text-neutral-800"
+            >
+              {item}
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={(event) => remove(item, event)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    remove(item, event as unknown as MouseEvent);
+                  }
+                }}
+                className="text-neutral-500 hover:text-neutral-800"
+                aria-label={`Remove ${item}`}
+              >
+                <X className="h-3 w-3" />
+              </span>
+            </span>
+          ))
+        )}
+      </button>
+      {open && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              ref={panelRef}
+              role="listbox"
+              aria-multiselectable
+              style={panelStyle}
+              className="max-h-56 overflow-y-auto border border-neutral-200 bg-white shadow-lg"
+            >
+              {options.map((option) => {
+                const checked = value.includes(option);
+                return (
+                  <label
+                    key={option}
+                    className="flex cursor-pointer items-center gap-3 px-4 py-2.5 text-sm font-normal text-neutral-800 hover:bg-neutral-50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggle(option)}
+                      className="h-4 w-4 rounded-none border-neutral-300 accent-[#1D3E35]"
+                    />
+                    {option}
+                  </label>
+                );
+              })}
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
@@ -202,18 +372,11 @@ function parseDescriptionParagraphs(text: string): string[] {
     .filter(Boolean);
 }
 
-function parseSkills(text: string): string[] {
-  return text
-    .split(',')
-    .map((skill) => skill.trim())
-    .filter(Boolean);
-}
-
 export function createPublicJobFromForm(data: CreateJobFormData, id?: string): PublicJob {
   const budgetMin = Number(data.budgetMin) || 0;
   const budgetMax = Number(data.budgetMax) || budgetMin;
   const descriptionParagraphs = parseDescriptionParagraphs(data.description);
-  const skills = parseSkills(data.skills);
+  const skills = data.skills.map((skill) => skill.trim()).filter(Boolean);
   const summary = descriptionParagraphs[0] ?? data.description.trim();
 
   return {
@@ -254,7 +417,7 @@ export function createDashboardJobFromForm(data: CreateJobFormData, id?: string)
     applications: '0 New',
     createdDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
     expiredDate: 'Expires in 30 days',
-    status: data.status || 'Pending',
+    status: data.status || 'Active',
   };
 }
 
@@ -267,9 +430,19 @@ export default function DashboardCreateJob({
 }: DashboardCreateJobProps) {
   const isEdit = mode === 'edit';
   const isIndividualPoster = postingContext?.accountType === 'individual';
-  const posterNameLabel = isIndividualPoster ? 'Posted as' : 'Company name';
-  const [form, setForm] = useState<CreateJobFormData>({ ...EMPTY_CREATE_FORM, ...initialData });
+  const [form, setForm] = useState<CreateJobFormData>(() => ({
+    ...EMPTY_CREATE_FORM,
+    ...normalizeJobFormData(initialData ?? {}),
+  }));
   const [openSection, setOpenSection] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!postingContext?.displayName) return;
+    setForm((prev) => {
+      if (prev.companyName.trim() === postingContext.displayName.trim()) return prev;
+      return { ...prev, companyName: postingContext.displayName };
+    });
+  }, [postingContext?.displayName]);
 
   const toggleSection = (id: string) => {
     setOpenSection((prev) => (prev === id ? null : id));
@@ -282,7 +455,12 @@ export default function DashboardCreateJob({
   const handleSubmit = (e?: FormEvent) => {
     e?.preventDefault();
     if (!form.title.trim()) return;
-    onSubmit(form);
+    onSubmit({
+      ...form,
+      companyName: postingContext?.displayName?.trim() || form.companyName.trim(),
+      postedLabel: '',
+      status: 'Active',
+    });
   };
 
   return (
@@ -343,15 +521,17 @@ export default function DashboardCreateJob({
               onChange={(category) => update({ category })}
               options={CATEGORIES}
             />
-            <div>
-              <label className={labelClass}>{posterNameLabel}</label>
-              <input
-                value={form.companyName}
-                onChange={(e) => update({ companyName: e.target.value })}
-                placeholder={isIndividualPoster ? 'Your name' : 'Vercel'}
-                className={fieldClass}
-              />
-            </div>
+            {!postingContext ? (
+              <div>
+                <label className={labelClass}>Company name</label>
+                <input
+                  value={form.companyName}
+                  onChange={(e) => update({ companyName: e.target.value })}
+                  placeholder="Company or your name"
+                  className={fieldClass}
+                />
+              </div>
+            ) : null}
             {!isIndividualPoster ? (
               <>
                 <SelectField
@@ -377,12 +557,6 @@ export default function DashboardCreateJob({
                 update({ experienceLevel: experienceLevel as PublicJob['experienceLevel'] })
               }
               options={EXPERIENCE_LEVELS}
-            />
-            <SelectField
-              label="Dashboard Status"
-              value={form.status}
-              onChange={(status) => update({ status: status as DashboardJob['status'] })}
-              options={DASHBOARD_STATUSES}
             />
           </div>
 
@@ -472,21 +646,12 @@ export default function DashboardCreateJob({
               />
             </div>
             <div className="sm:col-span-2">
-              <label className={labelClass}>Date Posted Label</label>
-              <input
-                value={form.postedLabel}
-                onChange={(e) => update({ postedLabel: e.target.value })}
-                placeholder="Posted 3 days ago"
-                className={fieldClass}
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className={labelClass}>Skills (comma separated)</label>
-              <input
+              <MultiSelectField
+                label="Skills"
                 value={form.skills}
-                onChange={(e) => update({ skills: e.target.value })}
-                placeholder="Next.js, React, TypeScript, SSR"
-                className={fieldClass}
+                onChange={(skills) => update({ skills })}
+                placeholder="Nothing selected"
+                options={SKILLS}
               />
             </div>
           </div>

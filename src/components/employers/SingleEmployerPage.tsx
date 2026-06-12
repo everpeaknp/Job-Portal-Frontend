@@ -528,6 +528,12 @@ export default function SingleEmployerPage({
                     employerName={employer.name}
                     initialRating={employer.rating}
                     initialReviews={reviews}
+                    preferApiReviews={reviews !== undefined}
+                    revieweeUserId={
+                      employer.id.startsWith('emp-user-')
+                        ? employer.id.slice('emp-user-'.length)
+                        : undefined
+                    }
                     showToast={onNotification}
                   />
                 </div>

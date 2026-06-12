@@ -3,9 +3,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Loader2, X } from 'lucide-react';
+import { ArrowLeft, ClipboardList, FileText, Loader2, X } from 'lucide-react';
+import {
+  ProposalDetailPanel,
+  ProposalMetaCard,
+  ProposalMetaGrid,
+  ProposalStatusPill,
+} from '@/components/proposals/ProposalDetailUi';
 import { toast } from 'sonner';
+import JobProposalApplicantPanel from '@/components/proposals/JobProposalApplicantPanel';
 import { useAuth } from '@/hooks/useAuth';
+import { resolveBidListingKind } from '@/lib/buildFreelancerCvData';
 import { formatNPR } from '@/lib/nepalLocale';
 import { getMediaUrl } from '@/lib/utils';
 import { bidService, formatBidDisplayId } from '@/services/bid.service';
@@ -59,20 +67,6 @@ function getTaskStatusFromBid(bid: Bid): string | null {
     return status ? String(status) : null;
   }
   return null;
-}
-
-function InfoRow({ label, value, title }: { label: string; value: string; title?: string }) {
-  return (
-    <div className="grid gap-1 border-b border-neutral-100 py-3 sm:grid-cols-3 sm:gap-4">
-      <dt className="text-sm text-neutral-500">{label}</dt>
-      <dd
-        className="min-w-0 break-words font-mono text-sm tracking-wide text-black sm:col-span-2 [overflow-wrap:anywhere]"
-        title={title}
-      >
-        {value}
-      </dd>
-    </div>
-  );
 }
 
 export default function DashboardProposalDetail({
@@ -141,14 +135,18 @@ export default function DashboardProposalDetail({
 
     setActionLoading(true);
     try {
-      const amount = Number(bid.amount) || 0;
-      const { available, hold } = await fetchWalletPreview(amount);
-      setWalletAvailableBalance(available);
-      setEscrowHoldAmount(hold);
+      const isJobProposal = resolveBidListingKind(bid) === 'job';
 
-      if (available !== null && available < hold) {
-        setShowInsufficientWalletModal(true);
-        return;
+      if (!isJobProposal) {
+        const amount = Number(bid.amount) || 0;
+        const { available, hold } = await fetchWalletPreview(amount);
+        setWalletAvailableBalance(available);
+        setEscrowHoldAmount(hold);
+
+        if (available !== null && available < hold) {
+          setShowInsufficientWalletModal(true);
+          return;
+        }
       }
 
       const response = await bidService.acceptBid(bid.id);
@@ -224,6 +222,7 @@ export default function DashboardProposalDetail({
   }
 
   const isPending = bid.status === 'pending';
+  const isJobProposal = resolveBidListingKind(bid) === 'job';
   const requiredHoldAmount = escrowHoldAmount ?? (Number(bid.amount) || 0);
   const taskTitle =
     bid.task_title ||
@@ -283,60 +282,104 @@ export default function DashboardProposalDetail({
         </div>
       </div>
 
-      <div className="grid min-w-0 gap-6 lg:grid-cols-2">
-        <section className="min-w-0 overflow-hidden rounded-xl bg-white p-6 shadow-[0_2px_12px_rgba(0,0,0,0.01)] sm:p-8">
-          <h3 className="mb-4 text-lg font-normal text-black">Basic Information</h3>
-          <dl>
-            <InfoRow
-              label="Bid ID"
-              value={formatBidDisplayId(bid.id)}
-              title={bid.id}
+      <div
+        className={`grid min-w-0 gap-6 ${isJobProposal ? 'grid-cols-1' : 'lg:grid-cols-2'}`}
+      >
+        <ProposalDetailPanel
+          title="Basic Information"
+          description="Proposal reference, applicant contact, and submission timeline."
+          icon={ClipboardList}
+        >
+          <div className="mb-6 flex flex-wrap items-center gap-3">
+            <ProposalStatusPill status={bid.status} />
+            <span className="inline-flex items-center rounded-lg bg-neutral-100 px-3 py-1.5 font-mono text-xs font-medium tracking-wide text-neutral-600">
+              {formatBidDisplayId(bid.id)}
+            </span>
+          </div>
+
+          <ProposalMetaGrid>
+            <ProposalMetaCard
+              label={isJobProposal ? 'Job' : 'Project'}
+              value={taskTitle}
+              highlight
             />
-            <InfoRow label="Status" value={bid.status} />
-            <InfoRow label="Project" value={taskTitle} />
-            <InfoRow label="Freelancer" value={taskerName(bid)} />
-            <InfoRow label="Email" value={bid.tasker?.email || '—'} />
-            <InfoRow label="Submitted" value={formatDisplayDate(bid.created_at)} />
-            <InfoRow label="Last updated" value={formatDisplayDate(bid.updated_at)} />
+            <ProposalMetaCard label="Freelancer" value={taskerName(bid)} />
+            <ProposalMetaCard label="Email" value={bid.tasker?.email || '—'} />
+            <ProposalMetaCard label="Submitted" value={formatDisplayDate(bid.created_at)} />
+            <ProposalMetaCard label="Last updated" value={formatDisplayDate(bid.updated_at)} />
             {bid.accepted_at ? (
-              <InfoRow label="Accepted at" value={formatDisplayDate(bid.accepted_at)} />
+              <ProposalMetaCard label="Accepted" value={formatDisplayDate(bid.accepted_at)} />
             ) : null}
             {bid.rejected_at ? (
-              <InfoRow label="Rejected at" value={formatDisplayDate(bid.rejected_at)} />
+              <ProposalMetaCard label="Rejected" value={formatDisplayDate(bid.rejected_at)} />
             ) : null}
-          </dl>
-        </section>
+          </ProposalMetaGrid>
+        </ProposalDetailPanel>
 
-        <section className="min-w-0 overflow-hidden rounded-xl bg-white p-6 shadow-[0_2px_12px_rgba(0,0,0,0.01)] sm:p-8">
-          <h3 className="mb-4 text-lg font-normal text-black">Offer Details</h3>
-          <dl>
-            <InfoRow label="Amount" value={formatNPR(Number(bid.amount) || 0)} />
-          </dl>
-          <div className="mt-4 min-w-0 border-t border-neutral-100 pt-4">
-            <p className="mb-2 text-sm text-neutral-500">Proposal</p>
-            <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-black [overflow-wrap:anywhere]">
-              {bid.proposal}
-            </p>
-          </div>
-          {bid.cover_letter ? (
+        {isJobProposal ? (
+          <JobProposalApplicantPanel bid={bid} />
+        ) : (
+          <section className="min-w-0 overflow-hidden rounded-xl bg-white p-6 shadow-[0_2px_12px_rgba(0,0,0,0.01)] sm:p-8">
+            <h3 className="mb-4 text-lg font-normal text-black">Offer Details</h3>
+            <dl>
+              <InfoRow label="Amount" value={formatNPR(Number(bid.amount) || 0)} />
+            </dl>
             <div className="mt-4 min-w-0 border-t border-neutral-100 pt-4">
-              <p className="mb-2 text-sm text-neutral-500">Cover letter</p>
+              <p className="mb-2 text-sm text-neutral-500">Proposal</p>
               <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-black [overflow-wrap:anywhere]">
-                {bid.cover_letter}
+                {bid.proposal}
               </p>
             </div>
-          ) : null}
-          {bid.tasker?.profile_image ? (
-            <div className="mt-4 border-t border-neutral-100 pt-4">
-              <p className="mb-2 text-sm text-neutral-500">Freelancer photo</p>
-              <img
-                src={getMediaUrl(bid.tasker.profile_image)}
-                alt=""
-                className="h-16 w-16 rounded-full object-cover"
-              />
-            </div>
-          ) : null}
-        </section>
+            {bid.cover_letter ? (
+              <div className="mt-4 min-w-0 border-t border-neutral-100 pt-4">
+                <p className="mb-2 text-sm text-neutral-500">Cover letter</p>
+                <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-black [overflow-wrap:anywhere]">
+                  {bid.cover_letter}
+                </p>
+              </div>
+            ) : null}
+            {bid.attachments && bid.attachments.length > 0 ? (
+              <div className="mt-4 min-w-0 border-t border-neutral-100 pt-4">
+                <p className="mb-2 text-sm text-neutral-500">Attachments</p>
+                <ul className="space-y-2">
+                  {bid.attachments.map((url, index) => (
+                    <li key={url}>
+                      <a
+                        href={getMediaUrl(url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-sm text-[#52C47F] hover:underline"
+                      >
+                        <FileText className="h-4 w-4 shrink-0" />
+                        <span className="break-all">
+                          {(() => {
+                            try {
+                              const name = new URL(url, 'http://localhost').pathname.split('/').pop();
+                              if (name) return decodeURIComponent(name);
+                            } catch {
+                              // ignore
+                            }
+                            return `Attachment ${index + 1}`;
+                          })()}
+                        </span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {bid.tasker?.profile_image ? (
+              <div className="mt-4 border-t border-neutral-100 pt-4">
+                <p className="mb-2 text-sm text-neutral-500">Freelancer photo</p>
+                <img
+                  src={getMediaUrl(bid.tasker.profile_image)}
+                  alt=""
+                  className="h-16 w-16 rounded-full object-cover"
+                />
+              </div>
+            ) : null}
+          </section>
+        )}
       </div>
 
       {bid.rejection_reason ? (
@@ -357,10 +400,10 @@ export default function DashboardProposalDetail({
           Back to all proposals
         </button>
         <Link
-          href={`/projects/${projectSlug}`}
+          href={isJobProposal ? `/jobs/${projectSlug}` : `/projects/${projectSlug}`}
           className="rounded-lg border border-neutral-200 bg-white px-4 py-2.5 text-sm text-neutral-800 hover:bg-neutral-50"
         >
-          View public project page
+          {isJobProposal ? 'View public job page' : 'View public project page'}
         </Link>
       </div>
 

@@ -82,6 +82,29 @@ function resolveOwnerName(task: Task): string {
 
 
 
+function resolveJobOwnerAvatarUrl(task: Task): string | undefined {
+  const businessLogo = task.owner_logo_url ? getMediaUrl(task.owner_logo_url) : undefined;
+  if (businessLogo) return businessLogo;
+
+  const ownerImage = task.owner_image ? getMediaUrl(task.owner_image) : undefined;
+  if (ownerImage) return ownerImage;
+
+  const owner = task.owner;
+  if (owner && typeof owner === 'object' && (owner as User).profile_image) {
+    return getMediaUrl((owner as User).profile_image as string);
+  }
+
+  return undefined;
+}
+
+function resolveOwnerId(task: Task): string | undefined {
+  if (typeof task.owner === 'string') return task.owner;
+  if (task.owner && typeof task.owner === 'object' && task.owner.id) {
+    return String(task.owner.id);
+  }
+  return undefined;
+}
+
 function resolveOwnerUsername(task: Task): string | undefined {
 
   if (task.owner_username?.trim()) {
@@ -256,20 +279,24 @@ function resolveDescription(task: Task, form?: Partial<CreateJobFormData>): stri
 
 
 
+const JOB_META_PARAGRAPH =
+  /^(skills|key responsibilities|work experience|hours|posted):/i;
+
+function filterJobContentParagraphs(paragraphs: string[]): string[] {
+  return paragraphs.filter((part) => !JOB_META_PARAGRAPH.test(part.trim()));
+}
+
 function resolveDescriptionParagraphs(task: Task, form?: Partial<CreateJobFormData>): string[] {
-
   if (form?.description?.trim()) {
-
-    return form.description.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
-
+    return filterJobContentParagraphs(
+      form.description.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean),
+    );
   }
 
   const raw = (task.description ?? '').trim();
-
   if (!raw) return [];
 
-  return raw.split('\n\n').map((p) => p.trim()).filter(Boolean);
-
+  return filterJobContentParagraphs(raw.split('\n\n').map((p) => p.trim()).filter(Boolean));
 }
 
 
@@ -348,6 +375,10 @@ export function mapTaskToPublicJob(task: Task): Job {
 
   const verified = Boolean(task.owner_is_verified ?? form?.verified);
 
+  const ownerAvatarUrl = resolveJobOwnerAvatarUrl(task);
+
+  const employerLogoText = task.owner_logo_text?.trim() || undefined;
+
 
 
   return {
@@ -355,6 +386,8 @@ export function mapTaskToPublicJob(task: Task): Job {
     id: task.id,
 
     slug: task.slug,
+
+    ownerId: resolveOwnerId(task),
 
     title: task.title || '',
 
@@ -367,6 +400,10 @@ export function mapTaskToPublicJob(task: Task): Job {
     companyLogoBg: form?.companyLogoBg || resolveOwnerAvatarBg(avatarSeed),
 
     companyIconType: form?.companyIconType || resolveIconType(avatarSeed),
+
+    ownerAvatarUrl,
+
+    employerLogoText,
 
     verified,
 
@@ -416,11 +453,14 @@ export function mapTaskToDashboardJob(task: Task): DashboardJob {
 
   const form = meta?.jobForm;
 
-  const company = form?.companyName?.trim() || resolveOwnerName(task);
+  const company =
+    task.owner_business_name?.trim() ||
+    form?.companyName?.trim() ||
+    resolveOwnerName(task);
 
   const bids = task.bids_count ?? 0;
 
-  const status = mapTaskStatusToDashboardJob(task, form?.status);
+  const status = mapTaskStatusToDashboardJob(task);
 
 
 
@@ -436,7 +476,9 @@ export function mapTaskToDashboardJob(task: Task): DashboardJob {
 
     logoColor: form?.companyLogoBg || resolveOwnerAvatarBg(company),
 
-    logoInitial: resolveOwnerInitials(company).toLowerCase(),
+    logoInitial: (task.owner_logo_text?.trim() || resolveOwnerInitials(company)).toLowerCase(),
+
+    logoUrl: resolveJobOwnerAvatarUrl(task),
 
     applications: bids > 0 ? `${bids} New` : '0 New',
 
@@ -464,60 +506,27 @@ export function mapTaskToDashboardJob(task: Task): DashboardJob {
 
 
 
-export function mapTaskStatusToDashboardJob(
-
-  task: Task,
-
-  dashboardStatus?: string,
-
-): DashboardJob['status'] {
-
-  const allowed: DashboardJob['status'][] = ['Active', 'Pending', 'Draft', 'Closed', 'Expired'];
-
-  if (dashboardStatus && allowed.includes(dashboardStatus as DashboardJob['status'])) {
-
-    return dashboardStatus as DashboardJob['status'];
-
-  }
-
-
-
+export function mapTaskStatusToDashboardJob(task: Task): DashboardJob['status'] {
   if (task.due_date) {
-
     const due = new Date(task.due_date);
-
     if (!Number.isNaN(due.getTime()) && due.getTime() < Date.now() && task.status === 'open') {
-
       return 'Expired';
-
     }
-
   }
-
-
 
   switch (task.status) {
-
     case 'open':
-
-      return task.is_public ? 'Active' : 'Pending';
-
+      // List endpoints may omit is_public; open published jobs should show Active.
+      if (task.is_public === false) return 'Pending';
+      return 'Active';
     case 'draft':
-
       return 'Draft';
-
     case 'cancelled':
-
     case 'completed':
-
       return 'Closed';
-
     default:
-
       return 'Pending';
-
   }
-
 }
 
 

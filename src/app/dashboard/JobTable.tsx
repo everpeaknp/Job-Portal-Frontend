@@ -1,6 +1,7 @@
 'use client';
 
 import { Pencil, Trash2, ClipboardList } from 'lucide-react';
+import EmployerAvatarCircle from '@/components/employers/EmployerAvatarCircle';
 import type { Job } from './types';
 
 interface JobTableProps {
@@ -9,27 +10,6 @@ interface JobTableProps {
   onEdit: (job: Job) => void;
   onDelete: (id: string) => void;
   onAddClick: () => void;
-}
-
-function JobLogo({ logoInitial }: { logoInitial: string }) {
-  if (logoInitial === 'mc') {
-    return (
-      <svg viewBox="0 0 24 24" className="h-6 w-6 fill-current text-emerald-400" strokeWidth={0}>
-        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
-      </svg>
-    );
-  }
-  if (logoInitial === 'in') {
-    return <span className="font-sans text-lg font-bold lowercase leading-none tracking-tighter">in</span>;
-  }
-  if (logoInitial === 'ad') {
-    return <span className="font-sans text-lg font-bold uppercase leading-none tracking-tighter">A</span>;
-  }
-  return (
-    <span className="font-sans text-lg font-semibold uppercase leading-none tracking-normal">
-      {logoInitial.slice(0, 2)}
-    </span>
-  );
 }
 
 function statusBadgeClass(status: Job['status']) {
@@ -88,11 +68,13 @@ export default function JobTable({ jobs, activeSubTab, onEdit, onDelete, onAddCl
                 <td className="select-all py-6 pl-2 align-top">
                   <div className="flex items-start gap-4">
                     <div className="relative mt-0.5 shrink-0">
-                      <div
-                        className={`flex h-[52px] w-[52px] items-center justify-center rounded-full ${job.logoColor} text-base font-bold text-white shadow-inner`}
-                      >
-                        <JobLogo logoInitial={job.logoInitial} />
-                      </div>
+                      <EmployerAvatarCircle
+                        name={job.company}
+                        avatarUrl={job.logoUrl}
+                        avatarBg={job.logoColor}
+                        sizeClass="h-[52px] w-[52px]"
+                        textClass="text-base font-bold uppercase"
+                      />
                       <span className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-500 shadow-sm" />
                     </div>
 

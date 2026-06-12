@@ -7,17 +7,14 @@ import { toast } from 'sonner';
 import DeleteConfirmModal from './DeleteConfirmModal';
 import { formatNPR } from '@/lib/nepalLocale';
 import {
-  collectSavedItemsForTab,
-  mapTaskToDashboardSavedItem,
   savedItemDetailPath,
   type DashboardSavedItem,
   type SavedSubTab,
 } from '@/lib/dashboardSaved';
-import { useSavedJobIds, setJobSaved } from '@/components/jobs/jobBookmarks';
-import { useSavedProjectIds, setProjectSaved } from '@/components/projects/projectBookmarks';
-import { useSavedServiceIds, setServiceSaved } from '@/components/services/serviceBookmarks';
+import { filterBookmarkedTasksByTab } from '@/lib/dashboardSavedApi';
 import { extractTaskList } from '@/lib/taskUtils';
 import { taskService } from '@/services';
+import type { Task } from '@/types';
 
 function SavedCard({
   item,
@@ -134,11 +131,7 @@ export default function DashboardSaved() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
-  const savedServiceIds = useSavedServiceIds();
-  const savedProjectIds = useSavedProjectIds();
-  const savedJobIds = useSavedJobIds();
-
-  const [taskBookmarks, setTaskBookmarks] = useState<DashboardSavedItem[]>([]);
+  const [bookmarkedTasks, setBookmarkedTasks] = useState<Task[]>([]);
   const [tasksLoading, setTasksLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<DashboardSavedItem | null>(null);
   const [removing, setRemoving] = useState(false);
@@ -148,13 +141,12 @@ export default function DashboardSaved() {
     try {
       const response = await taskService.getBookmarkedTasks();
       if (response.success && response.data) {
-        const tasks = extractTaskList(response.data);
-        setTaskBookmarks(tasks.map(mapTaskToDashboardSavedItem));
+        setBookmarkedTasks(extractTaskList(response.data));
       } else {
-        setTaskBookmarks([]);
+        setBookmarkedTasks([]);
       }
     } catch {
-      setTaskBookmarks([]);
+      setBookmarkedTasks([]);
     } finally {
       setTasksLoading(false);
     }
@@ -170,15 +162,8 @@ export default function DashboardSaved() {
   };
 
   const allItems = useMemo(
-    () =>
-      collectSavedItemsForTab(
-        activeSubTab,
-        savedServiceIds,
-        savedProjectIds,
-        savedJobIds,
-        taskBookmarks,
-      ),
-    [activeSubTab, savedServiceIds, savedProjectIds, savedJobIds, taskBookmarks],
+    () => filterBookmarkedTasksByTab(bookmarkedTasks, activeSubTab),
+    [activeSubTab, bookmarkedTasks],
   );
 
   const confirmDelete = async () => {
@@ -186,28 +171,15 @@ export default function DashboardSaved() {
 
     setRemoving(true);
     try {
-      if (deleteTarget.kind === 'task') {
-        const response = await taskService.unbookmarkTask(deleteTarget.slug);
-        if (response.success) {
-          setTaskBookmarks((prev) => prev.filter((item) => item.id !== deleteTarget.id));
-          toast.success('Removed from saved');
-          setDeleteTarget(null);
-        } else {
-          toast.error(response.message || 'Could not remove bookmark');
-        }
-        return;
+      const response = await taskService.unbookmarkTask(deleteTarget.slug);
+      if (response.success) {
+        setBookmarkedTasks((prev) => prev.filter((task) => String(task.id) !== deleteTarget.id));
+        toast.success('Removed from saved');
+        setDeleteTarget(null);
+      } else {
+        toast.error(response.message || 'Could not remove bookmark');
       }
-
-      if (deleteTarget.kind === 'job') {
-        setJobSaved(deleteTarget.id, false);
-      } else if (deleteTarget.kind === 'project') {
-        setProjectSaved(deleteTarget.id, false);
-      } else if (deleteTarget.kind === 'service') {
-        setServiceSaved(deleteTarget.id, false);
-      }
-
-      toast.success('Removed from saved');
-      setDeleteTarget(null);
+      return;
     } catch {
       toast.error('Could not remove bookmark');
     } finally {
@@ -229,8 +201,7 @@ export default function DashboardSaved() {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = allItems.slice(indexOfFirstItem, indexOfLastItem);
 
-  const showLoading =
-    activeSubTab === 'jobs' && tasksLoading && totalItems === 0 && savedJobIds.length === 0;
+  const showLoading = tasksLoading && totalItems === 0;
 
   const pageButtonClass = (page: number) =>
     `flex h-[44px] w-[44px] cursor-pointer items-center justify-center rounded-full border-0 text-sm font-normal outline-none transition-all focus-visible:ring-2 focus-visible:ring-[#52C47F]/30 ${

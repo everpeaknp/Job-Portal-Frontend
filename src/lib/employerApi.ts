@@ -1,4 +1,5 @@
 import type { SingleReview } from '@/components/employers/EmployerReviews';
+import { mapEmployerReviewDtoToProfileRow } from '@/lib/profileReviewDisplay';
 import type { Employer, EmployerGalleryImage } from '@/components/employers/employerData';
 import { findEmployerBySlug, isStaticDemoEmployer } from '@/components/employers/employerSlug';
 import type { EmployerBusinessProfile } from '@/lib/employerBusinessProfile';
@@ -58,6 +59,7 @@ export function mapEmployerProfileDtoToBusinessProfile(
 export function mapEmployerPublicDtoToEmployer(dto: EmployerPublicDto): Employer {
   return {
     id: dto.id,
+    slug: dto.slug?.trim().toLowerCase() || undefined,
     accountType: dto.account_type,
     name: dto.name,
     tagline: dto.tagline || 'Add a tagline on your business profile.',
@@ -99,16 +101,7 @@ function resolveReviewerName(review: EmployerReviewDto): string {
 }
 
 export function mapEmployerReviewDtoToSingleReview(review: EmployerReviewDto): SingleReview {
-  return {
-    id: review.id,
-    reviewerName: resolveReviewerName(review),
-    reviewerRole: 'Freelancer',
-    rating: review.rating ?? 0,
-    date: formatReviewDate(review.created_at),
-    comment: review.comment?.trim() || '',
-    likes: 0,
-    dislikes: 0,
-  };
+  return mapEmployerReviewDtoToProfileRow(review);
 }
 
 export interface EmployerListingCard {
@@ -255,6 +248,30 @@ function emptyReviewsResponse(): ApiResponse<{
   results: EmployerReviewDto[];
 }> {
   return { success: false, message: 'Unavailable', data: null as never, errors: null };
+}
+
+export function extractEmployerList(
+  data: { results?: EmployerPublicDto[] } | EmployerPublicDto[] | null | undefined,
+): EmployerPublicDto[] {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data.results)) return data.results;
+  return [];
+}
+
+export async function fetchPublicEmployers(
+  params?: Record<string, string | number>,
+): Promise<{ employers: Employer[]; count: number }> {
+  const response = await employerService.getEmployers(params);
+  if (!response.success || !response.data) {
+    throw new Error(response.message || 'Failed to load employers');
+  }
+  const dtos = extractEmployerList(response.data);
+  const count =
+    typeof response.data === 'object' && !Array.isArray(response.data) && 'count' in response.data
+      ? Number((response.data as { count: number }).count) || dtos.length
+      : dtos.length;
+  return { employers: dtos.map(mapEmployerPublicDtoToEmployer), count };
 }
 
 export async function loadEmployerPageData(slug: string): Promise<{

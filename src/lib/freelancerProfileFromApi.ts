@@ -139,18 +139,29 @@ function mapAwards(
 }
 
 function mapReviews(reviews: PublicProfileReview[]): FreelancerReviewItem[] {
-  return reviews.map((review) => ({
-    id: review.id,
-    reviewerName: reviewerDisplayName(review.reviewer),
-    reviewerRole: review.task_title?.trim() || 'Client',
-    rating: Number(review.rating) || 5,
-    date: review.created_at
-      ? format(new Date(review.created_at), 'MMMM d, yyyy')
-      : '—',
-    comment: review.comment?.trim() || '',
-    likes: 0,
-    dislikes: 0,
-  }));
+  return reviews.map((review) => {
+    const userVote =
+      review.user_vote === 'helpful'
+        ? 'like'
+        : review.user_vote === 'not_helpful'
+          ? 'dislike'
+          : undefined;
+
+    return {
+      id: review.id,
+      reviewerName: reviewerDisplayName(review.reviewer),
+      reviewerRole: review.task_title?.trim() || 'Client',
+      rating: Number(review.rating) || 5,
+      date: review.created_at
+        ? format(new Date(review.created_at), 'MMMM d, yyyy')
+        : '—',
+      comment: review.comment?.trim() || '',
+      likes: Number(review.helpful_count ?? 0),
+      dislikes: Number(review.not_helpful_count ?? 0),
+      userVoted: userVote,
+      isFlagged: Boolean(review.is_reported),
+    };
+  });
 }
 
 function mapPortfolioToFeatured(

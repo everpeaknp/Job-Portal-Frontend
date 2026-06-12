@@ -36,6 +36,19 @@ export interface CreateReviewData {
   tags?: string[];
 }
 
+export type ReviewInvitation = {
+  id: string;
+  task: string;
+  task_title?: string;
+  reviewer_type?: string;
+  reviewee_id?: string;
+  status?: string;
+  expires_at?: string;
+  is_expired?: boolean;
+};
+
+export type HelpfulVote = 'helpful' | 'not_helpful' | 'clear';
+
 class ReviewService {
   private readonly BASE_PATH = '/reviews';
 
@@ -83,6 +96,36 @@ class ReviewService {
     return apiClient.post(`${this.BASE_PATH}/${encodeURIComponent(reviewId)}/respond/`, {
       response_text: responseText,
     });
+  }
+
+  async getPendingInvitations(): Promise<ApiResponse<ReviewInvitation[]>> {
+    return apiClient.get(`${this.BASE_PATH}/pending_invitations/`);
+  }
+
+  async voteHelpful(reviewId: string, vote: HelpfulVote): Promise<ApiResponse<Review>> {
+    return apiClient.post(`${this.BASE_PATH}/${encodeURIComponent(reviewId)}/helpful/`, { vote });
+  }
+
+  async reportReview(
+    reviewId: string,
+    reason: string,
+    description: string,
+  ): Promise<ApiResponse<{ detail: string }>> {
+    return apiClient.post(`${this.BASE_PATH}/${encodeURIComponent(reviewId)}/report/`, {
+      reason,
+      description,
+    });
+  }
+
+  async getServiceReviews(slug: string): Promise<ApiResponse<TaskReviewsResponse>> {
+    return apiClient.get(`/services/${encodeURIComponent(slug)}/reviews/`, { skipAuth: true });
+  }
+
+  async createServiceReview(
+    slug: string,
+    data: Pick<CreateReviewData, 'rating' | 'comment'>,
+  ): Promise<ApiResponse<Review>> {
+    return apiClient.post(`/services/${encodeURIComponent(slug)}/reviews/`, data);
   }
 }
 

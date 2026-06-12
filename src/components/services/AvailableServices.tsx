@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { discoverBody, discoverHeadline, discoverMedium } from '@/components/LangingHome/landingTypography';
 import { formatNPR } from '@/lib/nepalLocale';
+import { DEFAULT_SERVICE_IMAGE, serviceListingFallbackImage } from '@/lib/dashboardListingApi';
 import { fetchPublicServices } from '@/lib/serviceApi';
 import { ALL_SERVICES, type Service as ServiceItem } from './serviceListData';
 import { getServiceAuthorProfilePath, getServiceDetailPath } from './serviceSlug';
@@ -25,6 +26,7 @@ import { toggleServiceSaved, useSavedServiceIds } from './serviceBookmarks';
 const BUDGET_MIN = 3000;
 const BUDGET_MAX = 20000;
 const BUDGET_DEFAULT = BUDGET_MAX;
+const ITEMS_PER_PAGE = 6;
 
 const DESIGN_TOOLS = ['Figma', 'Sketch', 'Adobe XD', 'Illustrator', 'Photoshop'] as const;
 const LOCATIONS = ['United States', 'United Kingdom', 'Germany', 'Remote'] as const;
@@ -47,7 +49,7 @@ export default function AvailableServices({
   const savedServiceIds = useSavedServiceIds();
   const [servicesData, setServicesData] = useState<ServiceItem[]>(ALL_SERVICES);
   const [loadingServices, setLoadingServices] = useState(true);
-  const [currentPage, setCurrentPage] = useState(2);
+  const [currentPage, setCurrentPage] = useState(1);
   const [cardSlideIndex, setCardSlideIndex] = useState<Record<string, number>>({ 'av-2': 1 });
 
   const [deliveryTime, setDeliveryTime] = useState<string>('all');
@@ -69,7 +71,17 @@ export default function AvailableServices({
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, searchCategory]);
+  }, [
+    searchQuery,
+    searchCategory,
+    deliveryTime,
+    maxBudget,
+    selectedTools,
+    selectedLocations,
+    selectedLanguages,
+    selectedLevels,
+    sortBy,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -217,6 +229,24 @@ export default function AvailableServices({
     searchCategory,
     servicesData,
   ]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredServices.length / ITEMS_PER_PAGE));
+  const activePage = Math.min(currentPage, totalPages);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedServices = useMemo(() => {
+    const start = (activePage - 1) * ITEMS_PER_PAGE;
+    return filteredServices.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredServices, activePage]);
+
+  const rangeStart =
+    filteredServices.length === 0 ? 0 : (activePage - 1) * ITEMS_PER_PAGE + 1;
+  const rangeEnd = Math.min(activePage * ITEMS_PER_PAGE, filteredServices.length);
 
   const deliveryCounts = useMemo(
     () => ({
@@ -437,7 +467,7 @@ export default function AvailableServices({
             ) : (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 <AnimatePresence mode="popLayout">
-                  {filteredServices.map((card) => {
+                  {paginatedServices.map((card) => {
                     const isFav = savedServiceIds.includes(card.id);
                     const hasMultiImages = !!card.images && card.images.length > 0;
                     const activeSlideIdx = cardSlideIndex[card.id] ?? 0;
@@ -463,6 +493,11 @@ export default function AvailableServices({
                             alt={card.title}
                             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                             referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src =
+                                serviceListingFallbackImage(card) || DEFAULT_SERVICE_IMAGE;
+                            }}
                           />
 
                           {hasMultiImages && card.images && (
@@ -567,64 +602,89 @@ export default function AvailableServices({
               </div>
             )}
 
-            <div className="mt-16 flex flex-col items-center justify-center gap-4 pt-5">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                  className="flex h-[50px] w-[50px] cursor-pointer items-center justify-center rounded-full border border-neutral-200 text-neutral-400 transition-all hover:border-neutral-400 hover:text-neutral-700"
-                  title="Previous Page"
-                  aria-label="Previous page"
-                >
-                  <ChevronLeft className="h-5 w-5" strokeWidth={2.5} />
-                </button>
-
-                <div className="flex items-center gap-1.5 md:gap-2">
-                  {[1, 2, 3, 4, 5].map((page) => (
-                    <button
-                      key={page}
-                      type="button"
-                      onClick={() => setCurrentPage(page)}
-                      className={`flex h-[50px] w-[50px] cursor-pointer items-center justify-center rounded-full text-[15px] transition-all duration-200 ${
-                        currentPage === page
-                          ? 'bg-[#52B788] font-semibold text-white shadow-sm'
-                          : 'font-normal text-neutral-800 hover:text-[#52B788]'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                  <span className="flex h-[50px] w-[40px] select-none items-end justify-center pb-3 text-base font-medium text-neutral-400">
-                    ...
-                  </span>
+            {totalPages > 1 ? (
+              <div className="mt-16 flex flex-col items-center justify-center gap-4 pt-5">
+                <div className="flex items-center gap-3">
                   <button
                     type="button"
-                    onClick={() => setCurrentPage(20)}
-                    className={`flex h-[50px] w-[50px] cursor-pointer items-center justify-center rounded-full text-[15px] transition-all duration-200 ${
-                      currentPage === 20
-                        ? 'bg-[#52B788] font-semibold text-white shadow-sm'
-                        : 'font-normal text-neutral-800 hover:text-[#52B788]'
-                    }`}
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    disabled={activePage === 1}
+                    className="flex h-[50px] w-[50px] cursor-pointer items-center justify-center rounded-full border border-neutral-200 text-neutral-400 transition-all hover:border-neutral-400 hover:text-neutral-700 disabled:cursor-not-allowed disabled:opacity-40"
+                    title="Previous Page"
+                    aria-label="Previous page"
                   >
-                    20
+                    <ChevronLeft className="h-5 w-5" strokeWidth={2.5} />
+                  </button>
+
+                  <div className="flex items-center gap-1.5 md:gap-2">
+                    {totalPages <= 6 ? (
+                      Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <button
+                          key={page}
+                          type="button"
+                          onClick={() => setCurrentPage(page)}
+                          className={`flex h-[50px] w-[50px] cursor-pointer items-center justify-center rounded-full text-[15px] transition-all duration-200 ${
+                            activePage === page
+                              ? 'bg-[#52B788] font-semibold text-white shadow-sm'
+                              : 'font-normal text-neutral-800 hover:text-[#52B788]'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))
+                    ) : (
+                      <>
+                        {[1, 2, 3, 4, 5].map((page) => (
+                          <button
+                            key={page}
+                            type="button"
+                            onClick={() => setCurrentPage(page)}
+                            className={`flex h-[50px] w-[50px] cursor-pointer items-center justify-center rounded-full text-[15px] transition-all duration-200 ${
+                              activePage === page
+                                ? 'bg-[#52B788] font-semibold text-white shadow-sm'
+                                : 'font-normal text-neutral-800 hover:text-[#52B788]'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        ))}
+                        <span className="flex h-[50px] w-[40px] select-none items-end justify-center pb-3 text-base font-medium text-neutral-400">
+                          ...
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setCurrentPage(totalPages)}
+                          className={`flex h-[50px] w-[50px] cursor-pointer items-center justify-center rounded-full text-[15px] transition-all duration-200 ${
+                            activePage === totalPages
+                              ? 'bg-[#52B788] font-semibold text-white shadow-sm'
+                              : 'font-normal text-neutral-800 hover:text-[#52B788]'
+                          }`}
+                        >
+                          {totalPages}
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={activePage === totalPages}
+                    className="flex h-[50px] w-[50px] cursor-pointer items-center justify-center rounded-full border border-black text-black transition-all hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    title="Next Page"
+                    aria-label="Next page"
+                  >
+                    <ChevronRight className="h-5 w-5" strokeWidth={2.5} />
                   </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage((prev) => Math.min(20, prev + 1))}
-                  className="flex h-[50px] w-[50px] cursor-pointer items-center justify-center rounded-full border border-black text-black transition-all hover:bg-neutral-50"
-                  title="Next Page"
-                  aria-label="Next page"
+                <div
+                  className={`${discoverBody} mt-1 text-[14px] font-light tracking-wide text-neutral-800 md:text-base`}
                 >
-                  <ChevronRight className="h-5 w-5" strokeWidth={2.5} />
-                </button>
+                  {rangeStart} – {rangeEnd} of {filteredServices.length} services available
+                </div>
               </div>
-
-              <div className={`${discoverBody} mt-1 text-[14px] font-light tracking-wide text-neutral-800 md:text-base`}>
-                1 – 20 of 300+ services available
-              </div>
-            </div>
+            ) : null}
           </div>
         </div>
       </div>

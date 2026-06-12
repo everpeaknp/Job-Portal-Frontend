@@ -230,6 +230,10 @@ export interface Bid {
   task_slug?: string;
   task_city?: string;
   task_listing_kind?: string | null;
+  task_owner_logo_url?: string | null;
+  task_owner_logo_text?: string | null;
+  task_owner_logo_color?: string | null;
+  task_owner_business_name?: string | null;
   tasker: User;
   amount: number;
   currency?: string;
@@ -514,6 +518,9 @@ export interface Review {
   // Metadata
   is_verified?: boolean;
   helpful_count?: number;
+  not_helpful_count?: number;
+  user_vote?: 'helpful' | 'not_helpful' | null;
+  is_reported?: boolean;
   created_at?: string;
   updated_at?: string;
 }

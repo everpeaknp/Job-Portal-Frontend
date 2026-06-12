@@ -217,7 +217,12 @@ export default function FreelancerAbout({ freelancer, profileExtras, onContact }
             <FreelancerLicenceBadges badges={licenceBadges} />
             <FreelancerTransport options={transportLabels} />
             <FreelancerFeaturedServices freelancer={freelancer} services={featuredServices} />
-            <FreelancerReviews freelancer={freelancer} initialReviews={reviewItems} />
+            <FreelancerReviews
+              freelancer={freelancer}
+              initialReviews={reviewItems}
+              preferApiReviews={Boolean(profileExtras)}
+              revieweeUserId={profileExtras?.userId}
+            />
           </div>
 
           <div className="lg:col-span-4">

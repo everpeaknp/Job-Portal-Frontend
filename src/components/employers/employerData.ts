@@ -10,6 +10,8 @@ export type EmployerAccountType = 'individual' | 'company';
 
 export interface Employer {
   id: string;
+  /** Public profile URL segment (username) for API-backed employers */
+  slug?: string;
   accountType?: EmployerAccountType;
   name: string;
   tagline: string;

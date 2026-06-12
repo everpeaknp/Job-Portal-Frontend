@@ -12,8 +12,10 @@ import {
   ITEMS_PER_PAGE,
   type Employer,
 } from './employerData';
-import { GreenSparkSparkle, renderCompanyLogo } from './employerLogos';
+import { GreenSparkSparkle, renderEmployerBrandLogo } from './employerLogos';
 import { getEmployerProfilePath } from './employerSlug';
+import { fetchPublicEmployers } from '@/lib/employerApi';
+import { toggleEmployerSaved, useSavedEmployerIds } from './employerBookmarks';
 
 interface EmployerListProps {
   searchQuery: string;
@@ -38,15 +40,11 @@ const SORT_OPTIONS = [
   { value: 'open-jobs', label: 'Open Jobs' },
 ];
 
-const INITIAL_STARRED = DEFAULT_EMPLOYERS.reduce<Record<string, boolean>>((acc, emp) => {
-  if (emp.isSaved) acc[emp.id] = true;
-  return acc;
-}, {});
-
 export default function EmployerList({ searchQuery, searchNonce, onNotify, onClearSearch }: EmployerListProps) {
   const router = useRouter();
-  const [employers] = useState<Employer[]>(DEFAULT_EMPLOYERS);
-  const [starredIds, setStarredIds] = useState<Record<string, boolean>>(INITIAL_STARRED);
+  const [employers, setEmployers] = useState<Employer[]>([]);
+  const [loadState, setLoadState] = useState<'loading' | 'ready'>('loading');
+  const savedEmployerIds = useSavedEmployerIds();
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedTeamSize, setSelectedTeamSize] = useState('All');
@@ -57,6 +55,29 @@ export default function EmployerList({ searchQuery, searchNonce, onNotify, onCle
   useEffect(() => {
     setCurrentPage(1);
   }, [searchNonce, selectedCategory, selectedTeamSize, sortBy, searchQuery]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadState('loading');
+    void fetchPublicEmployers({ page_size: 200 })
+      .then(({ employers: list }) => {
+        if (cancelled) return;
+        setEmployers(list.length > 0 ? list : DEFAULT_EMPLOYERS);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setEmployers(DEFAULT_EMPLOYERS);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadState('ready');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [searchNonce]);
 
   useEffect(() => {
     function handleClickOutside(event: globalThis.MouseEvent) {
@@ -74,11 +95,8 @@ export default function EmployerList({ searchQuery, searchNonce, onNotify, onCle
 
   const toggleStar = (employerId: string, event: MouseEvent) => {
     event.stopPropagation();
-    setStarredIds((prev) => {
-      const updated = { ...prev, [employerId]: !prev[employerId] };
-      onNotify(updated[employerId] ? 'Employer saved to your list.' : 'Employer removed from saved list.');
-      return updated;
-    });
+    const saved = toggleEmployerSaved(employerId);
+    onNotify(saved ? 'Employer saved to your list.' : 'Employer removed from saved list.');
   };
 
   const filteredEmployers = useMemo(() => {
@@ -262,7 +280,9 @@ export default function EmployerList({ searchQuery, searchNonce, onNotify, onCle
           </div>
         </div>
 
-        {filteredEmployers.length === 0 ? (
+        {loadState === 'loading' && employers.length === 0 ? (
+          <div className="min-h-[200px]" aria-busy="true" aria-label="Loading employers" />
+        ) : filteredEmployers.length === 0 ? (
           <div className="mt-2 w-full rounded-2xl border border-dashed border-gray-200 bg-white px-4 py-20 text-center">
             <AlertCircle className="mx-auto mb-3 h-10 w-10 text-neutral-300" />
             <span className={`${discoverHeadline} mb-1 block text-lg text-[#193e32]`}>No matching employers</span>
@@ -281,7 +301,7 @@ export default function EmployerList({ searchQuery, searchNonce, onNotify, onCle
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             <AnimatePresence mode="popLayout">
               {paginatedEmployers.map((emp) => {
-                const isStarred = !!starredIds[emp.id];
+                const isStarred = savedEmployerIds.includes(emp.id);
                 return (
                   <motion.div
                     layout
@@ -301,7 +321,7 @@ export default function EmployerList({ searchQuery, searchNonce, onNotify, onCle
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full">
-                          {renderCompanyLogo(emp.logoColor, emp.name)}
+                          {renderEmployerBrandLogo(emp.logoColor, emp.name, emp.logoUrl, emp.logoText)}
                         </div>
                         <span className={`${discoverMedium} truncate text-[15px] font-semibold text-neutral-900`}>
                           {emp.name}

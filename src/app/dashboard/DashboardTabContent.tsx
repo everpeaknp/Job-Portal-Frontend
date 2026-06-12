@@ -13,8 +13,12 @@ import DashboardProjects from './DashboardProjects';
 import DashboardFreelancerProjects from './DashboardFreelancerProjects';
 import DashboardProfile from './DashboardProfile';
 import DashboardSettings from './DashboardSettings';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useDashboardTab } from './DashboardTabContext';
 import { useAuthStore } from '@/store';
+import { isTabAllowedForRole, type DashboardSidebarRole } from './dashboardTabs';
+import { useDashboardSidebarRole } from './DashboardRoleSwitchContext';
 
 const TAB_LABELS: Record<string, string> = {
   dashboard: 'Dashboard',
@@ -34,6 +38,14 @@ const TAB_LABELS: Record<string, string> = {
 export default function DashboardTabContent() {
   const { activeTab, setActiveTab } = useDashboardTab();
   const userRole = useAuthStore((s) => s.user?.role);
+  const sidebarRole = useDashboardSidebarRole();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isTabAllowedForRole(activeTab, sidebarRole as DashboardSidebarRole)) {
+      router.replace('/dashboard');
+    }
+  }, [activeTab, router, sidebarRole]);
 
   if (activeTab === 'dashboard') {
     return <DashboardOverview onTabChange={setActiveTab} />;

@@ -93,7 +93,7 @@ const DEFAULT_SERVICES_PROVIDED = [
   'Flyer Design',
 ];
 
-const DEFAULT_SERVICE_FAQ: ServiceFaqItem[] = [
+export const DEFAULT_SERVICE_FAQ: ServiceFaqItem[] = [
   {
     question: 'What methods of payments are supported?',
     answer:

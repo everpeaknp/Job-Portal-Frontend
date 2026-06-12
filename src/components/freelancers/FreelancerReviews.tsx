@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { Star, ArrowUpRight, ThumbsUp, ThumbsDown, Filter, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useProfileReviewActions } from '@/hooks/useProfileReviewActions';
 import {
   buildFreelancerReviews,
   type Freelancer,
@@ -28,6 +29,8 @@ type SortParam = 'newest' | 'highest' | 'lowest';
 interface FreelancerReviewsProps {
   freelancer: Freelancer;
   initialReviews?: FreelancerReviewItem[];
+  preferApiReviews?: boolean;
+  revieweeUserId?: string | null;
   onReviewsUpdated?: (count: number, average: number) => void;
   showToast?: (message: string) => void;
 }
@@ -42,6 +45,8 @@ function formatReviewDate(date: Date) {
 export default function FreelancerReviews({
   freelancer,
   initialReviews,
+  preferApiReviews = false,
+  revieweeUserId,
   onReviewsUpdated,
   showToast = () => {},
 }: FreelancerReviewsProps) {
@@ -51,23 +56,44 @@ export default function FreelancerReviews({
   const [sortParam, setSortParam] = useState<SortParam>('newest');
   const [userRating, setUserRating] = useState(1);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
-  const [reviewerName, setReviewerName] = useState('');
-  const [reviewerEmail, setReviewerEmail] = useState('');
   const [reviewComment, setReviewComment] = useState('');
-  const [saveDetails, setSaveDetails] = useState(false);
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_REVIEWS);
 
+  const handleReviewCreated = useCallback((review: SingleReview) => {
+    setReviews((prev) => [review, ...prev]);
+  }, []);
+
+  const {
+    eligibleTasks,
+    selectedTaskId,
+    setSelectedTaskId,
+    loadingEligible,
+    submitting,
+    isAuthenticated,
+    voteReview,
+    reportReview,
+    submitReview,
+  } = useProfileReviewActions({
+    revieweeUserId: preferApiReviews ? (revieweeUserId ?? freelancer.id) : null,
+    defaultReviewerRole: 'Client',
+    showToast,
+    onReviewCreated: handleReviewCreated,
+  });
+
   useEffect(() => {
-    setReviews(initialReviews ?? buildFreelancerReviews(freelancer));
-    setReviewerName('');
-    setReviewerEmail('');
+    setReviews(
+      preferApiReviews
+        ? (initialReviews ?? [])
+        : initialReviews !== undefined
+          ? initialReviews
+          : buildFreelancerReviews(freelancer),
+    );
     setUserRating(1);
     setReviewComment('');
-    setSaveDetails(false);
     setFilterStar('All');
     setSortParam('newest');
     setVisibleCount(INITIAL_VISIBLE_REVIEWS);
-  }, [freelancer, initialReviews]);
+  }, [freelancer, initialReviews, preferApiReviews]);
 
   const calculatedCount = reviews.length;
   const calculatedAverage =
@@ -82,17 +108,26 @@ export default function FreelancerReviews({
     return Math.round((count / reviews.length) * 100);
   };
 
-  const handleAddReview = (e: FormEvent) => {
+  const handleAddReview = async (e: FormEvent) => {
     e.preventDefault();
-    if (!reviewerName.trim() || !reviewComment.trim()) {
-      showToast('Please fill out both the Name and Review Comments fields.');
+    if (preferApiReviews) {
+      const ok = await submitReview(userRating, reviewComment);
+      if (ok) {
+        setUserRating(1);
+        setReviewComment('');
+      }
+      return;
+    }
+
+    if (!reviewComment.trim()) {
+      showToast('Please fill out the review comment field.');
       return;
     }
 
     const newReview: SingleReview = {
       id: `user-rev-${Date.now()}`,
-      reviewerName: reviewerName.trim(),
-      reviewerRole: reviewerEmail.trim() || 'Client',
+      reviewerName: 'Guest',
+      reviewerRole: 'Client',
       rating: userRating,
       date: formatReviewDate(new Date()),
       comment: reviewComment.trim(),
@@ -102,15 +137,17 @@ export default function FreelancerReviews({
 
     setReviews((prev) => [newReview, ...prev]);
     showToast('Thank you! Your feedback has been published successfully.');
-    if (!saveDetails) {
-      setReviewerName('');
-      setReviewerEmail('');
-    }
     setUserRating(1);
     setReviewComment('');
   };
 
   const handleVote = (reviewId: string, type: 'like' | 'dislike') => {
+    if (preferApiReviews) {
+      const current = reviews.find((r) => r.id === reviewId);
+      void voteReview(reviewId, type, setReviews, current?.userVoted);
+      return;
+    }
+
     setReviews((prev) =>
       prev.map((r) => {
         if (r.id !== reviewId) return r;
@@ -142,6 +179,13 @@ export default function FreelancerReviews({
   };
 
   const handleFlagReview = (reviewId: string) => {
+    if (preferApiReviews) {
+      const current = reviews.find((r) => r.id === reviewId);
+      if (current?.isFlagged) return;
+      void reportReview(reviewId, setReviews);
+      return;
+    }
+
     setReviews((prev) =>
       prev.map((r) => {
         if (r.id !== reviewId) return r;
@@ -389,8 +433,10 @@ export default function FreelancerReviews({
         <div className="space-y-2">
           <h3 className="text-xl font-normal tracking-tight text-black">Add a Review</h3>
           <p className="text-sm font-normal text-black">
-            Your email address will not be published. Required fields are marked{' '}
-            <span className="text-black">*</span>
+            {preferApiReviews
+              ? 'Verified reviews are published after you complete work together on the platform.'
+              : 'Your email address will not be published. Required fields are marked '}
+            {!preferApiReviews ? <span className="text-black">*</span> : null}
           </p>
         </div>
 
@@ -434,52 +480,44 @@ export default function FreelancerReviews({
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <div className="space-y-2">
-            <label htmlFor="reviewer-name" className="block text-sm font-normal text-black">
-              Name
-            </label>
-            <input
-              id="reviewer-name"
-              type="text"
-              required
-              value={reviewerName}
-              onChange={(e) => setReviewerName(e.target.value)}
-              placeholder="Ali Tufan"
-              className="w-full rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm font-normal text-black outline-none transition-colors focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label htmlFor="reviewer-email" className="block text-sm font-normal text-black">
-              Email
-            </label>
-            <input
-              id="reviewer-email"
-              type="email"
-              value={reviewerEmail}
-              onChange={(e) => setReviewerEmail(e.target.value)}
-              placeholder="creativelayers088"
-              className="w-full rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm font-normal text-black outline-none transition-colors focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-            />
-          </div>
-        </div>
-
-        <label className="flex cursor-pointer items-start gap-3 text-sm font-normal text-black">
-          <input
-            type="checkbox"
-            checked={saveDetails}
-            onChange={(e) => setSaveDetails(e.target.checked)}
-            className="mt-0.5 h-4 w-4 shrink-0 rounded border-neutral-300 text-emerald-600 focus:ring-emerald-500"
-          />
-          <span>
-            Save my name, email, and website in this browser for the next time I comment.
-          </span>
-        </label>
+        {preferApiReviews ? (
+          <>
+            {!isAuthenticated ? (
+              <p className="text-sm text-neutral-600">
+                Sign in to leave a verified review after completing work with {freelancer.name}.
+              </p>
+            ) : loadingEligible ? (
+              <p className="text-sm text-neutral-500">Checking eligible completed work…</p>
+            ) : eligibleTasks.length === 0 ? (
+              <p className="text-sm text-neutral-600">
+                You can review {freelancer.name} once you have completed work together on the platform.
+              </p>
+            ) : eligibleTasks.length > 1 ? (
+              <div className="space-y-2">
+                <label htmlFor="review-task" className="block text-sm font-normal text-black">
+                  Completed work
+                </label>
+                <select
+                  id="review-task"
+                  value={selectedTaskId}
+                  onChange={(e) => setSelectedTaskId(e.target.value)}
+                  className="w-full rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-800 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                >
+                  {eligibleTasks.map((task) => (
+                    <option key={task.taskId} value={task.taskId}>
+                      {task.taskTitle}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
+          </>
+        ) : null}
 
         <button
           type="submit"
-          className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#5BBB7B] px-6 py-3 text-sm font-normal text-white transition-colors hover:bg-[#4da86c]"
+          disabled={preferApiReviews && (submitting || (isAuthenticated && eligibleTasks.length === 0))}
+          className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#5BBB7B] px-6 py-3 text-sm font-normal text-white transition-colors hover:bg-[#4da86c] disabled:cursor-not-allowed disabled:opacity-60"
         >
           <span>Send</span>
           <ArrowUpRight className="h-4 w-4 stroke-[2.5]" />

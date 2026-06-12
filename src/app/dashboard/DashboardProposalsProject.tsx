@@ -8,8 +8,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { formatNPR, shortenCommaSeparatedLocation } from '@/lib/nepalLocale';
 import { mapTaskToPublicProject } from '@/lib/projectApi';
 import { getMediaUrl } from '@/lib/utils';
+import { jobService } from '@/services/job.service';
 import { projectService } from '@/services/project.service';
 import { bidService, extractBidList, sortBidsByIdAlphanumeric } from '@/services/bid.service';
+import type { Task } from '@/types';
 import type { Bid } from '@/types';
 import {
   getDashboardHref,
@@ -31,6 +33,18 @@ function formatDisplayDate(value?: string): string {
   });
 }
 
+async function resolveListingBySlug(slug: string): Promise<Task | null> {
+  const projectResponse = await projectService.getProjectBySlug(slug);
+  if (projectResponse.success && projectResponse.data) {
+    return projectResponse.data;
+  }
+  const jobResponse = await jobService.getJobBySlug(slug);
+  if (jobResponse.success && jobResponse.data) {
+    return jobResponse.data;
+  }
+  return null;
+}
+
 function taskerName(bid: Bid): string {
   const tasker = bid.tasker;
   if (!tasker) return 'Freelancer';
@@ -49,12 +63,10 @@ export default function DashboardProposalsProject({ projectSlug }: DashboardProp
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const projectResponse = await projectService.getProjectBySlug(projectSlug);
-      if (!projectResponse.success || !projectResponse.data) {
-        throw new Error(projectResponse.message || 'Project not found');
+      const task = await resolveListingBySlug(projectSlug);
+      if (!task) {
+        throw new Error('Listing not found');
       }
-
-      const task = projectResponse.data;
       const project = mapTaskToPublicProject(task);
       const resolvedOwnerId =
         typeof task.owner === 'string'

@@ -6,6 +6,7 @@ import { motion } from 'motion/react';
 import { Star, Heart, ArrowLeft, ArrowRight } from 'lucide-react';
 import { discoverBody, discoverHeadline } from '@/components/LangingHome/landingTypography';
 import { formatNPR } from '@/lib/nepalLocale';
+import { DEFAULT_SERVICE_IMAGE, serviceListingFallbackImage } from '@/lib/dashboardListingApi';
 import { fetchPublicServices } from '@/lib/serviceApi';
 import { ALL_SERVICES } from './serviceListData';
 import { getServiceAuthorProfilePath, getServiceDetailPath } from './serviceSlug';
@@ -131,6 +132,11 @@ export default function BestServices({ className = '' }: BestServicesProps) {
                       alt={card.title}
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                       referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src =
+                          serviceListingFallbackImage(card) || DEFAULT_SERVICE_IMAGE;
+                      }}
                     />
 
                     <button
