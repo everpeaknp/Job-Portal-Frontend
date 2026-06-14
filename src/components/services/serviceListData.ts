@@ -27,6 +27,8 @@ export interface Service {
     name: string;
     avatar: string;
     online: boolean;
+    /** Tasker username for /freelancers/[slug] when loaded from API */
+    username?: string;
     role?: string;
     hourlyRate?: number;
     jobSuccess?: number;

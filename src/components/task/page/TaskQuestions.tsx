@@ -1,0 +1,349 @@
+'use client';
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { formatDistanceToNow } from 'date-fns';
+import { AlertCircle, Loader2, MessageCircle, Send } from 'lucide-react';
+import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
+import { mapTaskQuestionToProjectItem } from '@/lib/projectApi';
+import { taskService } from '@/services/task.service';
+import {
+  buildProjectQuestions,
+  type Project,
+  type ProjectQuestionItem,
+} from '@/components/projects/projectListData';
+
+interface TaskQuestionsProps {
+  project: Project;
+}
+
+function formatRelativeTime(iso?: string): string {
+  if (!iso) return '';
+  try {
+    return formatDistanceToNow(new Date(iso), { addSuffix: true });
+  } catch {
+    return '';
+  }
+}
+
+export default function TaskQuestions({ project }: TaskQuestionsProps) {
+  const router = useRouter();
+  const { user } = useAuth();
+  const posterName = project.companyName;
+  const taskSlug = project.slug;
+
+  const seedQuestions = useMemo(() => buildProjectQuestions(project), [project]);
+
+  const [questions, setQuestions] = useState<ProjectQuestionItem[]>(seedQuestions);
+  const [questionText, setQuestionText] = useState('');
+  const [submittingQuestion, setSubmittingQuestion] = useState(false);
+  const [answerDrafts, setAnswerDrafts] = useState<Record<string, string>>({});
+  const [submittingAnswerId, setSubmittingAnswerId] = useState<string | null>(null);
+  const [loadingQuestions, setLoadingQuestions] = useState(Boolean(taskSlug));
+
+  const isOwner = Boolean(
+    user?.id && project.ownerId && String(user.id) === String(project.ownerId),
+  );
+  const showAskBox = !isOwner;
+  const canAnswer = isOwner;
+
+  const loadQuestions = useCallback(async () => {
+    if (!taskSlug) return;
+
+    setLoadingQuestions(true);
+    try {
+      const response = await taskService.getTaskQuestions(taskSlug);
+      if (response.success && response.data) {
+        setQuestions(
+          response.data.map((item) => mapTaskQuestionToProjectItem(item, posterName)),
+        );
+      }
+    } catch {
+      // Non-blocking: keep seed/empty state
+    } finally {
+      setLoadingQuestions(false);
+    }
+  }, [posterName, taskSlug]);
+
+  useEffect(() => {
+    setQuestions(seedQuestions);
+    setQuestionText('');
+    setAnswerDrafts({});
+    if (taskSlug) {
+      void loadQuestions();
+    }
+  }, [project.id, taskSlug, seedQuestions, loadQuestions]);
+
+  const handleAskQuestion = useCallback(async () => {
+    const trimmed = questionText.trim();
+    if (!trimmed) return;
+
+    if (!user) {
+      router.push('/signin');
+      return;
+    }
+
+    if (isOwner) {
+      toast.error('You cannot ask questions on your own task.');
+      return;
+    }
+
+    if (!taskSlug) {
+      toast.error('Questions are not available for this task.');
+      return;
+    }
+
+    setSubmittingQuestion(true);
+    try {
+      const response = await taskService.askQuestion(taskSlug, trimmed);
+      if (response.success && response.data) {
+        setQuestionText('');
+        toast.success('Question posted');
+        await loadQuestions();
+      } else {
+        toast.error(response.message || 'Failed to post question');
+      }
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === 'object' && 'message' in err && typeof (err as { message: string }).message === 'string'
+          ? (err as { message: string }).message
+          : 'Failed to post question';
+      toast.error(message);
+    } finally {
+      setSubmittingQuestion(false);
+    }
+  }, [isOwner, loadQuestions, questionText, router, taskSlug, user]);
+
+  const handleAnswerQuestion = useCallback(
+    async (questionId: string) => {
+      const trimmed = (answerDrafts[questionId] || '').trim();
+      if (!trimmed) return;
+
+      if (!canAnswer) {
+        toast.error('Only the task poster can reply to questions.');
+        return;
+      }
+
+      if (!taskSlug) {
+        toast.error('Questions are not available for this task.');
+        return;
+      }
+
+      setSubmittingAnswerId(questionId);
+      try {
+        const response = await taskService.answerQuestion(taskSlug, questionId, trimmed);
+        if (response.success && response.data) {
+          setQuestions((prev) =>
+            prev.map((q) =>
+              q.id === questionId
+                ? mapTaskQuestionToProjectItem(response.data!, posterName)
+                : q,
+            ),
+          );
+          setAnswerDrafts((prev) => {
+            const next = { ...prev };
+            delete next[questionId];
+            return next;
+          });
+          toast.success('Reply posted');
+        } else {
+          toast.error(response.message || 'Failed to post reply');
+        }
+      } catch (err: unknown) {
+        const message =
+          err && typeof err === 'object' && 'message' in err && typeof (err as { message: string }).message === 'string'
+            ? (err as { message: string }).message
+            : 'Failed to post reply';
+        toast.error(message);
+      } finally {
+        setSubmittingAnswerId(null);
+      }
+    },
+    [answerDrafts, canAnswer, posterName, taskSlug],
+  );
+
+  const unansweredCount = questions.filter((q) => !q.answer?.trim()).length;
+
+  return (
+    <section className="mt-12 border-t border-neutral-200 pt-10" id="task-questions-section">
+      <div className="mb-6">
+        <h2 className="flex items-center gap-2 text-xl font-normal tracking-tight text-black sm:text-2xl">
+          <MessageCircle className="h-5 w-5 text-neutral-700" />
+          Questions
+          <span className="text-base font-normal text-neutral-500">({questions.length})</span>
+        </h2>
+        <p className="mt-1 text-sm font-normal text-neutral-500">
+          Ask about scope, timing, or requirements before you make an offer.
+        </p>
+      </div>
+
+      <div className="space-y-6">
+        {showAskBox ? (
+          <div className="rounded-lg border border-neutral-200 bg-white p-5 sm:p-6">
+            <h3 className="mb-3 text-base font-normal text-black sm:text-lg">Ask a question</h3>
+            {!user ? (
+              <p className="mb-4 text-sm font-normal text-neutral-600">
+                <button
+                  type="button"
+                  onClick={() => router.push('/signin')}
+                  className="font-normal text-black underline underline-offset-2 hover:opacity-80"
+                >
+                  Sign in
+                </button>{' '}
+                to post your question.
+              </p>
+            ) : null}
+            <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 sm:p-3">
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+              <p className="text-[11px] font-normal leading-snug text-amber-900 sm:text-xs">
+                <strong>Important:</strong> Do not share personal contact details in your question.
+                Keep all communication on the platform for your safety.
+              </p>
+            </div>
+            <div className="relative">
+              <textarea
+                value={questionText}
+                onChange={(e) => setQuestionText(e.target.value)}
+                placeholder="Type your question here..."
+                rows={4}
+                className="w-full resize-none rounded-none border border-neutral-200 bg-white p-4 pr-14 text-sm font-normal text-black outline-none transition-colors focus:border-neutral-400"
+              />
+              <button
+                type="button"
+                disabled={!questionText.trim() || submittingQuestion}
+                onClick={() => void handleAskQuestion()}
+                className="absolute bottom-3 right-3 rounded-full bg-[#222222] p-2.5 text-white transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Post question"
+              >
+                {submittingQuestion ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-neutral-200 bg-neutral-50/80 px-5 py-4 text-sm font-normal text-neutral-600">
+            You posted this task. Taskers can ask questions here — reply in the list below when
+            questions come in.
+          </div>
+        )}
+
+        {canAnswer && unansweredCount > 0 ? (
+          <p className="text-sm font-normal text-neutral-600">
+            Reply to {unansweredCount} open question{unansweredCount === 1 ? '' : 's'} so taskers
+            know more about your task.
+          </p>
+        ) : null}
+
+        <div className="space-y-4">
+          <h3 className="text-base font-normal text-black sm:text-lg">
+            Previous questions ({questions.length})
+          </h3>
+
+          {loadingQuestions ? (
+            <div className="flex items-center gap-2 text-sm font-normal text-neutral-500">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading questions…
+            </div>
+          ) : questions.length === 0 ? (
+            <p className="text-sm font-normal text-neutral-500">
+              No questions yet. Be the first to ask about this task.
+            </p>
+          ) : (
+            questions.map((q) => (
+              <article
+                key={q.id}
+                className="rounded-lg border border-neutral-200 bg-white px-5 py-5 sm:px-6 sm:py-6"
+              >
+                <div className="flex items-start gap-4">
+                  <img
+                    src={
+                      q.askedByImage ||
+                      'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150'
+                    }
+                    alt={q.askedByName}
+                    className="h-11 w-11 shrink-0 rounded-full border border-neutral-100 object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <h4 className="text-sm font-normal text-black sm:text-base">{q.askedByName}</h4>
+                      {q.createdAt ? (
+                        <span className="text-xs font-normal text-neutral-400">
+                          {formatRelativeTime(q.createdAt)}
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="text-sm font-normal leading-relaxed text-neutral-700 sm:text-[15px]">
+                      {q.question}
+                    </p>
+                  </div>
+                </div>
+
+                {q.answer?.trim() ? (
+                  <div className="ml-4 mt-4 border-l-2 border-neutral-200 pl-4 sm:ml-14 sm:pl-6">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-xs font-normal text-white">
+                        {posterName.charAt(0)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1 flex flex-wrap items-center gap-2">
+                          <h4 className="text-xs font-normal text-black sm:text-sm">
+                            {q.answeredByName || posterName}
+                          </h4>
+                          {q.answeredAt ? (
+                            <span className="text-[10px] font-normal text-neutral-400 sm:text-xs">
+                              {formatRelativeTime(q.answeredAt)}
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="text-xs font-normal leading-relaxed text-neutral-600 sm:text-sm">
+                          {q.answer}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : canAnswer ? (
+                  <div className="ml-4 mt-4 sm:ml-14">
+                    <p className="mb-2 text-xs font-normal text-black sm:text-sm">Your reply</p>
+                    <div className="relative">
+                      <textarea
+                        value={answerDrafts[q.id] ?? ''}
+                        onChange={(e) =>
+                          setAnswerDrafts((prev) => ({ ...prev, [q.id]: e.target.value }))
+                        }
+                        placeholder="Write your answer..."
+                        rows={3}
+                        className="w-full resize-none rounded-none border border-neutral-200 bg-white p-4 pr-14 text-sm font-normal text-black outline-none transition-colors focus:border-neutral-400"
+                      />
+                      <button
+                        type="button"
+                        disabled={!(answerDrafts[q.id] || '').trim() || submittingAnswerId === q.id}
+                        onClick={() => void handleAnswerQuestion(q.id)}
+                        className="absolute bottom-3 right-3 rounded-full bg-[#222222] p-2 text-white transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+                        aria-label="Post reply"
+                      >
+                        {submittingAnswerId === q.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="ml-4 mt-3 text-xs font-normal italic text-neutral-500 sm:ml-14 sm:text-sm">
+                    Waiting for the task poster to reply.
+                  </p>
+                )}
+              </article>
+            ))
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}

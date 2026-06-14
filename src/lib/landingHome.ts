@@ -1,4 +1,5 @@
 import type { Category, Task, User } from '@/types';
+import { TASK_BROWSE_PATH, taskMapPathWithQuery } from '@/lib/taskBrowsePath';
 import { formatNPR } from '@/lib/nepalLocale';
 import { taskBudgetAmount } from '@/lib/taskFilters';
 import { extractTaskList } from '@/lib/taskUtils';
@@ -37,8 +38,7 @@ export type CategoryColumn = {
 };
 
 export function browseTasksHref(category?: string): string {
-  if (!category?.trim()) return '/task';
-  return `/task?category=${encodeURIComponent(category.trim())}`;
+  return taskMapPathWithQuery(category);
 }
 
 export function postTaskHref(title?: string): string {
@@ -234,7 +234,7 @@ export function buildMockLandingTaskerCards(): LandingTaskerCard[] {
     completionRate: t.completionRate,
     specialities: t.specialities ?? [],
     description: t.description,
-    profileHref: '/task',
+    profileHref: TASK_BROWSE_PATH,
     topReview: t.topReview,
   }));
 }

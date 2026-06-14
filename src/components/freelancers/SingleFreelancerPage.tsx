@@ -4,20 +4,37 @@ import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
 import FreelancerProfileHero from './FreelancerProfileHero';
 import FreelancerAbout from './FreelancerAbout';
+import FreelancerProfileEmptyState from './FreelancerProfileEmptyState';
 import type { Freelancer } from './freelancerData';
 import type { FreelancerProfileExtras } from '@/lib/freelancerProfileFromApi';
 
 interface SingleFreelancerPageProps {
   freelancer: Freelancer;
   profileExtras?: FreelancerProfileExtras;
+  isProfileConfigured?: boolean;
+  isOwnProfile?: boolean;
   onInquire?: (name: string, message?: string) => void | Promise<void>;
 }
 
 export default function SingleFreelancerPage({
   freelancer,
   profileExtras,
+  isProfileConfigured = true,
+  isOwnProfile = false,
   onInquire,
 }: SingleFreelancerPageProps) {
+  if (!isProfileConfigured) {
+    return (
+      <div className="select-none bg-white pb-12 pt-8 font-normal text-black">
+        <FreelancerProfileEmptyState
+          name={freelancer.name}
+          username={freelancer.username}
+          isOwnProfile={isOwnProfile}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="select-none bg-white pb-12 pt-8 font-normal text-black">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">

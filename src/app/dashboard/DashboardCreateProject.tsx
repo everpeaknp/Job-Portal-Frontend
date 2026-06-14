@@ -295,6 +295,8 @@ interface DashboardCreateProjectProps {
   mode?: 'create' | 'edit';
   postingContext?: EmployerPostingContext | null;
   categoryOptions?: string[];
+  skillOptions?: string[];
+  languageOptions?: string[];
 }
 
 const LEVEL_TO_EXPERIENCE: Record<string, PublicProject['experienceLevel']> = {
@@ -385,6 +387,8 @@ export default function DashboardCreateProject({
   mode = 'create',
   postingContext,
   categoryOptions = [],
+  skillOptions = [],
+  languageOptions = [],
 }: DashboardCreateProjectProps) {
   const isEdit = mode === 'edit';
   const [form, setForm] = useState<CreateProjectFormData>(() => ({
@@ -397,6 +401,8 @@ export default function DashboardCreateProject({
     form.category && !baseCategoryOptions.includes(form.category)
       ? [form.category, ...baseCategoryOptions]
       : baseCategoryOptions;
+  const skillChoices = skillOptions.length > 0 ? skillOptions : SKILLS;
+  const languageChoices = languageOptions.length > 0 ? languageOptions : LANGUAGES;
   const [attachmentItems, setAttachmentItems] = useState<AttachmentItem[]>(() =>
     toAttachmentItems(initialAttachments),
   );
@@ -601,7 +607,7 @@ export default function DashboardCreateProject({
             value={form.languages}
             onChange={(languages) => update({ languages })}
             placeholder="Select languages"
-            options={LANGUAGES}
+            options={languageChoices}
           />
 
           <MultiSelectField
@@ -609,7 +615,7 @@ export default function DashboardCreateProject({
             value={form.skills}
             onChange={(skills) => update({ skills })}
             placeholder="Nothing selected"
-            options={SKILLS}
+            options={skillChoices}
           />
 
           <div>

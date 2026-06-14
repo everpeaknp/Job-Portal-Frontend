@@ -31,8 +31,6 @@ import AddressAutocompleteFields, {
 import { DEFAULT_COUNTRY } from '@/lib/nepalLocale';
 import { genderLabelFromApi, genderValueFromLabel } from '@/lib/dashboardProfileSkills';
 
-const panStorageKey = (userId: string | number) => `dashboard_profile_pan_${userId}`;
-
 const SELECT_CHEVRON_STYLE = {
   backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
   backgroundRepeat: 'no-repeat',
@@ -44,8 +42,9 @@ import { userService } from '@/services';
 import { authService } from '@/services';
 import { notificationService } from '@/services';
 import { toast } from 'sonner';
-import { USER_PROFILE_UPDATED, notifyUserProfileUpdated } from '@/lib/userProfileSync';
+import type { UserKYC } from '@/types';
 import { getMediaUrl } from '@/lib/utils';
+import { USER_PROFILE_UPDATED, notifyUserProfileUpdated } from '@/lib/userProfileSync';
 
 const DEFAULT_PROFILE_IMAGE =
   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&h=300&fit=crop';
@@ -183,6 +182,7 @@ export default function Settings({
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [documentsUploading, setDocumentsUploading] = useState<Record<string, boolean>>({});
   const [documents, setDocuments] = useState<Record<string, any>>({});
+  const [kyc, setKyc] = useState<UserKYC | null>(null);
   // Form states
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -229,16 +229,6 @@ export default function Settings({
     setAddressLongitude(user?.longitude);
     setBirthday(user?.date_of_birth || '');
     setGender(genderLabelFromApi(user?.gender));
-    if (user?.id) {
-      try {
-        const storedPan = localStorage.getItem(panStorageKey(user.id));
-        setPanNumber(storedPan || '');
-      } catch {
-        setPanNumber('');
-      }
-    } else {
-      setPanNumber('');
-    }
   }, [user, defaultEmail, defaultPhone]);
 
   const handleAddressFieldsChange = (updates: Partial<AddressFieldValues>) => {
@@ -276,6 +266,20 @@ export default function Settings({
     setOpenSection(openSection === id ? null : id);
   };
 
+  const fetchKyc = async () => {
+    try {
+      const response = await userService.getKyc();
+      if (response.success && response.data) {
+        setKyc(response.data);
+        if (response.data.pan_number) {
+          setPanNumber(response.data.pan_number);
+        }
+      }
+    } catch (error: unknown) {
+      console.error('Failed to load KYC:', error);
+    }
+  };
+
   const fetchDocuments = async () => {
     try {
       setDocumentsLoading(true);
@@ -298,6 +302,7 @@ export default function Settings({
   useEffect(() => {
     if (openSection === 'verify') {
       void fetchDocuments();
+      void fetchKyc();
     }
   }, [openSection]);
 
@@ -432,6 +437,7 @@ export default function Settings({
       if (response.success && response.data) {
         setDocuments((p) => ({ ...p, [key]: response.data }));
         toast.success('Document uploaded. Pending admin review.');
+        void fetchKyc();
         refreshUser();
       }
     } catch (error: any) {
@@ -662,15 +668,12 @@ export default function Settings({
       }
 
       if (nextUser.id) {
-        try {
-          const normalizedPan = panNumber.trim().toUpperCase();
-          if (normalizedPan) {
-            localStorage.setItem(panStorageKey(nextUser.id), normalizedPan);
-          } else {
-            localStorage.removeItem(panStorageKey(nextUser.id));
-          }
-        } catch {
-          // ignore localStorage errors
+        const normalizedPan = panNumber.trim().toUpperCase();
+        const kycResponse = await userService.updateKyc({
+          pan_number: normalizedPan,
+        });
+        if (kycResponse.success && kycResponse.data) {
+          setKyc(kycResponse.data);
         }
       }
 
@@ -900,6 +903,20 @@ export default function Settings({
                 >
                   Upload your documents here. Our admins review them and update your verification status.
                 </p>
+                {kyc?.status && kyc.status !== 'not_started' ? (
+                  <p className={`mt-2 text-xs font-semibold uppercase tracking-wide ${
+                    kyc.status === 'approved'
+                      ? 'text-green-700'
+                      : kyc.status === 'rejected'
+                        ? 'text-red-700'
+                        : 'text-amber-700'
+                  }`}>
+                    Verification status: {kyc.status_display || kyc.status.replace('_', ' ')}
+                  </p>
+                ) : null}
+                {kyc?.status === 'rejected' && kyc.rejection_reason ? (
+                  <p className="mt-2 text-sm font-medium text-red-700">{kyc.rejection_reason}</p>
+                ) : null}
               </div>
             </div>
 

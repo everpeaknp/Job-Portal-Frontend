@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { ArrowUpRight, Star } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { isListingOpenForBids } from '@/lib/taskUtils';
 import { resolveEmployerProfileHref } from '@/components/employers/employerSlug';
 import EmployerAvatarCircle from '@/components/employers/EmployerAvatarCircle';
 import { getProjectBuyerMeta, type Project } from './projectListData';
@@ -81,7 +83,11 @@ export default function ProjectSidebar({
   onSubmitProposal,
   onContactBuyer,
 }: ProjectSidebarProps) {
+  const { user } = useAuth();
   const buyer = getProjectBuyerMeta(project);
+  const offersOpen = isListingOpenForBids(project.status);
+  const isOwner =
+    Boolean(user?.id) && Boolean(project.ownerId) && String(user.id) === String(project.ownerId);
   const employerHref = resolveEmployerProfileHref({
     employerSlug: project.employerSlug,
     companyName: project.companyName,
@@ -126,16 +132,18 @@ export default function ProjectSidebar({
           </p>
           <p className="mt-1.5 text-[15px] font-normal text-neutral-500">{project.type} Rate</p>
 
-          <button
-            type="button"
-            onClick={onSubmitProposal}
-            className="group/btn relative mt-6 flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-md bg-[#52C47F] px-6 py-4 text-base font-normal text-white transition-colors hover:bg-[#49b071]"
-          >
-            <span className="flex items-center gap-2">
-              Submit a Proposal
-              <ArrowUpRight className="h-4 w-4 stroke-[2.5]" />
-            </span>
-          </button>
+          {offersOpen && !isOwner ? (
+            <button
+              type="button"
+              onClick={onSubmitProposal}
+              className="group/btn relative mt-6 flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-md bg-[#52C47F] px-6 py-4 text-base font-normal text-white transition-colors hover:bg-[#49b071]"
+            >
+              <span className="flex items-center gap-2">
+                Submit a Proposal
+                <ArrowUpRight className="h-4 w-4 stroke-[2.5]" />
+              </span>
+            </button>
+          ) : null}
         </div>
 
         <div className="rounded-xl border border-neutral-200/80 bg-white p-6 shadow-[0_2px_16px_rgba(0,0,0,0.04)]">

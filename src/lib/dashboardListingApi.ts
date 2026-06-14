@@ -24,9 +24,9 @@ import { projectService } from '@/services/project.service';
 import { jobService } from '@/services/job.service';
 import { serviceService } from '@/services/service.service';
 import { taskService } from '@/services/task.service';
-import type { Category, Task } from '@/types';
+import type { Category, MarketplaceLanguage, MarketplaceSkill, Task } from '@/types';
 
-export type ListingKind = 'service' | 'project' | 'job';
+export type ListingKind = 'service' | 'project' | 'job' | 'task';
 
 const LISTING_TAG_PREFIX = 'listing:';
 
@@ -103,15 +103,20 @@ type DashboardMeta = {
 
 export type DashboardListingPayload = Record<string, unknown>;
 
-export function getListingKind(task: Task): ListingKind | null {
+export function getListingKind(task: Task): ListingKind {
   const fromField = (task as Task & { listing_kind?: string | null }).listing_kind;
-  if (fromField) return fromField as ListingKind;
+  if (fromField === 'service' || fromField === 'project' || fromField === 'job') {
+    return fromField;
+  }
   for (const tag of task.tags ?? []) {
     if (tag.startsWith(LISTING_TAG_PREFIX)) {
-      return tag.slice(LISTING_TAG_PREFIX.length) as ListingKind;
+      const kind = tag.slice(LISTING_TAG_PREFIX.length);
+      if (kind === 'service' || kind === 'project' || kind === 'job') {
+        return kind;
+      }
     }
   }
-  return null;
+  return 'task';
 }
 
 export function parseTaskDashboardMeta(task: Task): DashboardMeta | null {
@@ -557,6 +562,10 @@ export function taskToProjectFormData(task: Task): Partial<CreateProjectFormData
   };
 }
 
+export function mapTaskToDashboardTask(task: Task): Project {
+  return mapTaskToProject(task);
+}
+
 export async function fetchMyListingTasks(kind: ListingKind): Promise<Task[]> {
   const response =
     kind === 'service'
@@ -569,7 +578,8 @@ export async function fetchMyListingTasks(kind: ListingKind): Promise<Task[]> {
   if (!response.success || !response.data) {
     throw new Error(response.message || 'Failed to load listings');
   }
-  return extractTaskList(response.data);
+  const tasks = extractTaskList(response.data);
+  return kind === 'task' ? tasks.filter((task) => getListingKind(task) === 'task') : tasks;
 }
 
 /** Tasks where the current user is the assigned tasker, filtered by listing kind. */
@@ -589,8 +599,58 @@ export async function uploadTaskFiles(taskId: string, files: File[]) {
   }
 }
 
-export async function loadCategories(): Promise<Category[]> {
-  const response = await taskService.getCategories();
+export async function loadCategories(
+  listingKind: 'task' | 'job' | 'project' | 'service' = 'task',
+): Promise<Category[]> {
+  const response = await taskService.getCategories({ listing_kind: listingKind });
   if (!response.success || !response.data) return [];
   return extractCategoryList(response.data);
+}
+
+function extractSkillList(data: unknown): MarketplaceSkill[] {
+  if (Array.isArray(data)) return data as MarketplaceSkill[];
+  if (data && typeof data === 'object' && Array.isArray((data as { results?: unknown }).results)) {
+    return (data as { results: MarketplaceSkill[] }).results;
+  }
+  return [];
+}
+
+export function skillNamesForSelect(skills: MarketplaceSkill[]): string[] {
+  return skills.map((skill) => skill.name);
+}
+
+export async function loadSkills(
+  listingKind: 'job' | 'project' | 'service',
+): Promise<MarketplaceSkill[]> {
+  const { skillService } = await import('@/services/skill.service');
+  const response = await skillService.getSkills({
+    listing_kind: listingKind,
+    page_size: 200,
+  });
+  if (!response.success || !response.data) return [];
+  return extractSkillList(response.data);
+}
+
+function extractLanguageList(data: unknown): MarketplaceLanguage[] {
+  if (Array.isArray(data)) return data as MarketplaceLanguage[];
+  if (data && typeof data === 'object' && Array.isArray((data as { results?: unknown }).results)) {
+    return (data as { results: MarketplaceLanguage[] }).results;
+  }
+  return [];
+}
+
+export function languageNamesForSelect(languages: MarketplaceLanguage[]): string[] {
+  return languages.map((language) => language.name);
+}
+
+export async function loadLanguages(
+  listingKind: 'profile' | 'project' | 'service',
+): Promise<MarketplaceLanguage[]> {
+  const { languageService } = await import('@/services/language.service');
+  const response = await languageService.getLanguages({
+    listing_kind: listingKind,
+    page_size: 200,
+  });
+  if (!response.success || !response.data) return [];
+  return extractLanguageList(response.data);
 }

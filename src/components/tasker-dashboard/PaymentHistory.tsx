@@ -10,6 +10,7 @@ import {
   ArrowDownRight,
   Info,
 } from 'lucide-react';
+import { TASK_BROWSE_PATH } from '@/lib/taskBrowsePath';
 import { cn } from '@/lib/utils';
 import { paymentService } from '@/services';
 import type { PaymentHistoryItem } from '@/services/payment.service';
@@ -252,7 +253,7 @@ export default function PaymentHistory({ initialTab = 'earned' }: PaymentHistory
                 <button
                   type="button"
                   onClick={() => {
-                    window.location.href = activeTab === 'earned' ? '/task' : '/post-task';
+                    window.location.href = activeTab === 'earned' ? TASK_BROWSE_PATH : '/post-task';
                   }}
                   className="bg-brand-emerald text-white px-10 py-4 rounded-2xl font-black text-lg shadow-xl shadow-brand-emerald/20 hover:scale-105 transition-all active:scale-95"
                 >

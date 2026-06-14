@@ -5,6 +5,7 @@ import { Calendar, FileText, Loader2, Star } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { bidService, extractBidList } from '@/services/bid.service';
 import { formatNPR } from '@/lib/nepalLocale';
+import { isListingOpenForBids } from '@/lib/taskUtils';
 import { getMediaUrl } from '@/lib/utils';
 import type { Bid } from '@/types';
 import type { Project } from './projectListData';
@@ -48,7 +49,9 @@ export default function ProjectProposals({ project, refreshKey = 0 }: ProjectPro
   const [loading, setLoading] = useState(true);
 
   const isOwner =
-    Boolean(user?.id) && Boolean(project.ownerId) && String(user.id) === String(project.ownerId);
+    Boolean(user?.id) && Boolean(project.ownerId) && String(user?.id) === String(project.ownerId);
+
+  const offersOpen = isListingOpenForBids(project.status);
 
   const loadBids = useCallback(async () => {
     if (!project.id) {
@@ -89,9 +92,13 @@ export default function ProjectProposals({ project, refreshKey = 0 }: ProjectPro
         </div>
       ) : bids.length === 0 ? (
         <p className="text-sm font-normal text-neutral-500">
-          {isOwner
-            ? 'No proposals yet. Freelancers can submit from the form below.'
-            : 'No proposals yet. Be the first to submit yours below.'}
+          {offersOpen
+            ? isOwner
+              ? 'No proposals yet. Freelancers can submit from the form below.'
+              : 'No proposals yet. Be the first to submit yours below.'
+            : isOwner
+              ? 'No proposals were submitted on this project.'
+              : 'This project is not accepting new proposals.'}
         </p>
       ) : (
         <div className="space-y-4">

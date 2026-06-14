@@ -160,8 +160,10 @@ export const taskService = {
   /**
    * Get all categories
    */
-  async getCategories(): Promise<ApiResponse<Category[]>> {
-    return apiClient.get<Category[]>('/tasks/categories/');
+  async getCategories(
+    params?: Record<string, string | number>,
+  ): Promise<ApiResponse<Category[]>> {
+    return apiClient.get<Category[]>('/tasks/categories/', { params });
   },
 
   /**

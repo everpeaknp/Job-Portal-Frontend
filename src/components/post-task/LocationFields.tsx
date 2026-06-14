@@ -23,7 +23,7 @@ import {
 export type LocationType = 'in-person' | 'remote' | 'hybrid';
 
 export type LocationFieldsData = {
-  location: string;
+  location?: string;
   locationType: LocationType;
   latitude?: number;
   longitude?: number;
@@ -50,6 +50,7 @@ export default function LocationFields({
   showWorkModeHeading = true,
 }: LocationFieldsProps) {
   const isDashboard = variant === 'dashboard';
+  const location = data.location ?? '';
   const needsAddress = data.locationType === 'in-person' || data.locationType === 'hybrid';
   const [isDetecting, setIsDetecting] = useState(false);
   const [suggestions, setSuggestions] = useState<NominatimPlace[]>([]);
@@ -106,7 +107,7 @@ export default function LocationFields({
       return;
     }
 
-    const query = data.location.trim();
+    const query = location.trim();
     if (query.length < 3) {
       setSuggestions([]);
       setIsSearching(false);
@@ -145,7 +146,7 @@ export default function LocationFields({
       window.clearTimeout(timer);
       searchAbortRef.current?.abort();
     };
-  }, [data.location, data.locationType, needsAddress]);
+  }, [location, data.locationType, needsAddress]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -169,7 +170,7 @@ export default function LocationFields({
 
     onChange({
       locationType: type,
-      location: data.location === 'Remote' ? '' : data.location,
+      location: location === 'Remote' ? '' : location,
       latitude: undefined,
       longitude: undefined,
     });
@@ -349,7 +350,7 @@ export default function LocationFields({
               autoComplete="off"
               className={inputClass}
               placeholder="e.g. Kalimati, Kathmandu or Lalitpur"
-              value={data.location}
+              value={location}
               onChange={(e) => {
                 onChange({ location: e.target.value });
                 clearCoordinates();
@@ -466,7 +467,7 @@ export default function LocationFields({
 
             {showSuggestions &&
             !isSearching &&
-            data.location.trim().length >= 3 &&
+            location.trim().length >= 3 &&
             suggestions.length === 0 &&
             citySuggestions.length === 0 ? (
               <div

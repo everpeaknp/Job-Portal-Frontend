@@ -1,10 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { motion } from 'motion/react';
 import { Eye, Star, ClipboardList } from 'lucide-react';
 import { getServiceMeta, type Service } from './serviceListData';
-import { getServiceAuthorProfilePath } from './serviceSlug';
+import ServiceAuthorLink from './ServiceAuthorLink';
 
 const HERO_ILLUSTRATION =
   'https://freeio-app-nextjs.vercel.app/_next/image?url=%2Fimages%2Fabout%2Fhome6-hero-img-1.png&w=1200&q=75';
@@ -54,8 +53,8 @@ export default function ServiceDetailHero({ service }: ServiceDetailHeroProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.12 }}
           >
-            <Link
-              href={getServiceAuthorProfilePath(service)}
+            <ServiceAuthorLink
+              service={service}
               className="inline-flex items-center gap-2 transition-opacity hover:opacity-80"
             >
               <img
@@ -65,7 +64,7 @@ export default function ServiceDetailHero({ service }: ServiceDetailHeroProps) {
                 referrerPolicy="no-referrer"
               />
               <span className="hover:text-[#52C47F]">{service.author.name}</span>
-            </Link>
+            </ServiceAuthorLink>
 
             <span className="inline-flex items-center gap-1.5">
               <Star className="h-4 w-4 fill-[#fbbf24] text-[#fbbf24]" />

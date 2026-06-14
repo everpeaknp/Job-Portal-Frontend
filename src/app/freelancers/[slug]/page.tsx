@@ -11,7 +11,7 @@ import Footer from '@/components/common/footer';
 import SingleFreelancerPage from '@/components/freelancers/SingleFreelancerPage';
 import { useAuth } from '@/hooks/useAuth';
 import type { FreelancerProfileBundle } from '@/lib/freelancerProfileFromApi';
-import { loadFreelancerPageData } from '@/lib/freelancerApi';
+import { loadFreelancerPageData, resolveEmployerRedirectForSlug } from '@/lib/freelancerApi';
 import { chatService } from '@/services/chat.service';
 
 export default function FreelancerSlugPage() {
@@ -36,6 +36,11 @@ export default function FreelancerSlugPage() {
     try {
       const loaded = await loadFreelancerPageData(slug);
       if (!loaded) {
+        const employerPath = await resolveEmployerRedirectForSlug(slug);
+        if (employerPath) {
+          router.replace(employerPath);
+          return;
+        }
         setNotFoundState(true);
         return;
       }
@@ -174,6 +179,8 @@ export default function FreelancerSlugPage() {
           <SingleFreelancerPage
             freelancer={bundle.freelancer}
             profileExtras={bundle.extras}
+            isProfileConfigured={bundle.isProfileConfigured}
+            isOwnProfile={currentUser?.id === bundle.extras.userId}
             onInquire={handleContact}
           />
         )}

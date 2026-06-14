@@ -1,19 +1,26 @@
+'use client';
+
 import React from 'react';
 import { MapPin, Calendar, Clock, Edit, Trash2 } from 'lucide-react';
 import UserAvatar from '@/components/common/UserAvatar';
+import HeroCardDecor from '@/components/task/HeroCardDecor';
+import { discoverBody, discoverMedium } from '@/components/LangingHome/landingTypography';
 import { formatNPR } from '@/lib/nepalLocale';
 import { formatMyTaskStatusLabel } from '@/lib/taskUtils';
+import { useRoadDistanceLabel } from '@/hooks/useRoadDistanceLabel';
+import { cn } from '@/lib/utils';
 
 interface TaskCardProps {
   id?: string;
   slug?: string;
   key?: React.Key;
   title: string;
-  /** Raw API status for color mapping, e.g. `open` */
   status: string;
-  /** Human-readable status, e.g. "Posted" */
   statusLabel?: string;
   location: string;
+  coordinates?: [number, number] | null;
+  userCenter?: [number, number] | null;
+  distanceLabel?: string | null;
   price: number;
   dueDate?: string | Date | null;
   timeLabel?: string;
@@ -50,17 +57,17 @@ function formatDueDateLabel(dueDate?: string | Date | null): string {
 function statusTextClass(status: string): string {
   switch (status) {
     case 'open':
-      return 'text-white';
+      return 'text-[#52C47F]';
     case 'assigned':
     case 'in_progress':
-      return 'text-emerald-100';
+      return 'text-emerald-700';
     case 'completed':
-      return 'text-purple-200';
+      return 'text-purple-600';
     case 'cancelled':
     case 'disputed':
-      return 'text-red-200';
+      return 'text-red-600';
     default:
-      return 'text-white/90';
+      return 'text-neutral-700';
   }
 }
 
@@ -69,6 +76,9 @@ export default function TaskCard({
   status,
   statusLabel,
   location,
+  coordinates,
+  userCenter,
+  distanceLabel: distanceLabelProp,
   price,
   dueDate,
   timeLabel = 'Anytime',
@@ -83,10 +93,11 @@ export default function TaskCard({
   const displayStatus = statusLabel || formatMyTaskStatusLabel(status);
   const dateLabel = formatDueDateLabel(dueDate);
   const hasActions = Boolean(onEdit || onDelete);
-
-  const cardSurfaceClass = isActive
-    ? 'ring-2 ring-white/40'
-    : 'hover:brightness-105 active:brightness-95';
+  const { label: hookDistanceLabel, loading: distanceLoading } = useRoadDistanceLabel(
+    userCenter,
+    coordinates,
+  );
+  const distanceLabel = hookDistanceLabel ?? distanceLabelProp ?? null;
 
   return (
     <div
@@ -103,100 +114,118 @@ export default function TaskCard({
             }
           : undefined
       }
-      className={`relative flex min-w-0 w-full cursor-pointer flex-col rounded-2xl bg-gradient-to-br from-brand-dark via-[#1e5c48] to-brand-emerald p-4 text-white shadow-lg transition-all group sm:p-5 ${cardSurfaceClass} ${className}`.trim()}
+      className={cn(
+        'group relative flex min-w-0 w-full cursor-pointer flex-col overflow-hidden',
+        'rounded-[20px] border border-neutral-200/40 bg-[#fbf2ed] p-4 shadow-sm',
+        'transition-all duration-300 sm:rounded-[24px] sm:p-5',
+        isActive
+          ? 'border-[#52C47F]/50 ring-2 ring-[#52C47F]/25 shadow-[0_4px_14px_rgba(82,196,127,0.12)]'
+          : 'hover:border-neutral-300/60 hover:shadow-[0_4px_14px_rgba(0,0,0,0.06)] active:scale-[0.995]',
+        className,
+      )}
     >
-      <div
-        className="pointer-events-none absolute inset-0 opacity-30"
-        aria-hidden
-        style={{
-          backgroundImage:
-            'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.15) 0%, transparent 45%), radial-gradient(circle at 80% 80%, rgba(255,255,255,0.08) 0%, transparent 40%)',
-        }}
-      />
-      <div className="relative flex flex-1 flex-col">
-      {/* Title + actions + price */}
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <h3 className="flex-1 min-w-0 font-sans text-base sm:text-[17px] font-bold leading-snug text-white line-clamp-2 break-words [overflow-wrap:anywhere] group-hover:text-white/90 transition-colors">
-          {title}
-        </h3>
-        <div className="flex items-center gap-1 shrink-0">
-          {hasActions && (
-            <div className="flex items-center gap-0.5 mr-1">
-              {onEdit && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit();
-                  }}
-                  className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/15 transition-colors"
-                  title="Edit task"
-                  aria-label="Edit task"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-              )}
-              {onDelete && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete();
-                  }}
-                  className="p-1.5 rounded-lg text-white/80 hover:text-red-200 hover:bg-white/15 transition-colors"
-                  title="Delete task"
-                  aria-label="Delete task"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          )}
-          <p className="font-sans text-base sm:text-lg font-bold text-white leading-snug">
-            {formatNPR(price)}
-          </p>
-        </div>
-      </div>
+      <HeroCardDecor accentPosition="bottom-right" />
 
-      {/* Location, date, time */}
-      <div className="flex flex-col gap-2 sm:gap-2.5 mb-4 min-w-0">
-        <div className="flex items-center gap-2 min-w-0 text-white/85">
-          <MapPin className="w-4 h-4 shrink-0 stroke-[1.5]" aria-hidden />
-          <span className="font-sans text-sm leading-5 truncate">{location}</span>
-        </div>
-        <div className="flex items-center gap-2 text-white/85">
-          <Calendar className="w-4 h-4 shrink-0 stroke-[1.5]" aria-hidden />
-          <span className="font-sans text-sm leading-5">{dateLabel}</span>
-        </div>
-        <div className="flex items-center gap-2 text-white/85">
-          <Clock className="w-4 h-4 shrink-0 stroke-[1.5]" aria-hidden />
-          <span className="font-sans text-sm leading-5">{timeLabel}</span>
-        </div>
-      </div>
-
-      {/* Status, offers, avatar */}
-      <div className="mt-auto flex items-center justify-between gap-3 min-w-0 overflow-visible pt-2 pr-0.5 pb-0.5">
-        <div className="min-w-0 flex flex-col gap-0.5">
-          <span
-            className={`font-sans text-sm sm:text-[15px] font-bold leading-5 ${statusTextClass(status)}`}
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <h3
+            className={cn(
+              discoverBody,
+              'min-h-[2.75rem] flex-1 min-w-0 text-base font-normal leading-snug text-black line-clamp-2 break-words [overflow-wrap:anywhere] transition-colors group-hover:text-[#52C47F] sm:min-h-[3.125rem] sm:text-[17px]',
+            )}
           >
-            {displayStatus}
-          </span>
-          {offerCount > 0 && (
-            <span className="font-sans text-xs text-white/75 leading-4">
-              {offerCount} {offerCount === 1 ? 'offer' : 'offers'}
-            </span>
-          )}
+            {title}
+          </h3>
+          <div className="flex shrink-0 items-start gap-1">
+            {hasActions ? (
+              <div className="mr-1 flex items-center gap-0.5">
+                {onEdit ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit();
+                    }}
+                    className="rounded-lg p-1.5 text-neutral-500 transition-colors hover:bg-white/60 hover:text-neutral-800"
+                    title="Edit task"
+                    aria-label="Edit task"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </button>
+                ) : null}
+                {onDelete ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete();
+                    }}
+                    className="rounded-lg p-1.5 text-neutral-500 transition-colors hover:bg-white/60 hover:text-red-600"
+                    title="Delete task"
+                    aria-label="Delete task"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+            <p className={cn(discoverMedium, 'text-base font-bold leading-snug text-[#52C47F] sm:text-lg')}>
+              {formatNPR(price)}
+            </p>
+          </div>
         </div>
-        <UserAvatar
-          src={user.avatar}
-          alt={user.name}
-          name={user.name}
-          size="md"
-          verified={user.verified}
-          className="shrink-0"
-        />
-      </div>
+
+        <div className="mb-4 flex min-w-0 flex-col gap-2 sm:gap-2.5">
+          <div className="flex min-h-[20px] min-w-0 items-center justify-between gap-3 text-neutral-700">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <MapPin className="h-4 w-4 shrink-0 stroke-[1.6] text-neutral-500" aria-hidden />
+              <span className={cn(discoverBody, 'truncate text-sm leading-5')}>{location}</span>
+            </div>
+            <span
+              className={cn(
+                discoverBody,
+                'min-w-[4.5rem] shrink-0 text-right text-xs leading-5 whitespace-nowrap text-neutral-500 sm:text-sm',
+              )}
+            >
+              {distanceLabel ?? (distanceLoading ? '…' : '')}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-neutral-700">
+            <Calendar className="h-4 w-4 shrink-0 stroke-[1.6] text-neutral-500" aria-hidden />
+            <span className={cn(discoverBody, 'text-sm leading-5')}>{dateLabel}</span>
+          </div>
+          <div className="flex items-center gap-2 text-neutral-700">
+            <Clock className="h-4 w-4 shrink-0 stroke-[1.6] text-neutral-500" aria-hidden />
+            <span className={cn(discoverBody, 'text-sm leading-5')}>{timeLabel}</span>
+          </div>
+        </div>
+
+        <div className="mt-auto flex min-w-0 items-center justify-between gap-3 overflow-visible pt-2 pr-0.5 pb-0.5">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span
+              className={cn(
+                discoverMedium,
+                'text-sm font-semibold leading-5 sm:text-[15px]',
+                statusTextClass(status),
+              )}
+            >
+              {displayStatus}
+            </span>
+            {offerCount > 0 ? (
+              <span className={cn(discoverBody, 'text-xs leading-4 text-neutral-500')}>
+                {offerCount} {offerCount === 1 ? 'offer' : 'offers'}
+              </span>
+            ) : null}
+          </div>
+          <UserAvatar
+            src={user.avatar}
+            alt={user.name}
+            name={user.name}
+            size="md"
+            verified={user.verified}
+            className="shrink-0 ring-2 ring-white/80"
+          />
+        </div>
       </div>
     </div>
   );

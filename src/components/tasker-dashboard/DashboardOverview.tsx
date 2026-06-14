@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { TASK_BROWSE_PATH } from '@/lib/taskBrowsePath';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -204,7 +205,7 @@ export default function DashboardOverview() {
 
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Link
-          href="/task"
+          href={TASK_BROWSE_PATH}
           className="group flex items-center gap-3 p-4 rounded-2xl border border-outline-variant bg-white hover:border-brand-emerald/30 hover:shadow-sm transition-all"
         >
           <div className="p-2.5 rounded-xl bg-brand-emerald/10 text-brand-emerald">

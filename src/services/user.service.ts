@@ -14,6 +14,7 @@ import {
   PortfolioItem,
   UserDocument,
   UserDocumentType,
+  UserKYC,
   ProfileFormData,
   ApiResponse,
   PaginatedResponse,
@@ -327,6 +328,17 @@ export const userService = {
    */
   async deleteDocument(documentId: string): Promise<ApiResponse<void>> {
     return apiClient.delete(`/users/me/documents/${documentId}/`);
+  },
+
+  /**
+   * Identity Trust Program (Verify Account / KYC)
+   */
+  async getKyc(): Promise<ApiResponse<UserKYC>> {
+    return apiClient.get<UserKYC>('/users/me/kyc/');
+  },
+
+  async updateKyc(data: { pan_number?: string }): Promise<ApiResponse<UserKYC>> {
+    return apiClient.patch<UserKYC>('/users/me/kyc/', data);
   },
 
   /**

@@ -30,6 +30,10 @@ export default function FreelancerFeaturedServices({
   );
   const [showToast, setShowToast] = useState<string | null>(null);
 
+  if (services !== undefined && featuredServices.length === 0) {
+    return null;
+  }
+
   const toggleFavorite = (id: string, event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
     const isNowFavorite = !favorites[id];

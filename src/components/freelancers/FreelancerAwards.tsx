@@ -19,6 +19,10 @@ export default function FreelancerAwards({ freelancer, items }: FreelancerAwards
     [freelancer, items],
   );
 
+  if (items !== undefined && awardItems.length === 0) {
+    return null;
+  }
+
   return (
     <div className="mt-10 w-full max-w-4xl">
       <h3 className="mb-8 text-xl font-normal tracking-tight text-black sm:text-2xl">

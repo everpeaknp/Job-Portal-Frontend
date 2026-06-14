@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
 import ServiceDetailHero from './ServiceDetailHero';
@@ -12,7 +13,7 @@ import ServiceComparePackages from './ServiceComparePackages';
 import ServiceFaq from './ServiceFaq';
 import ServiceReviews from './ServiceReviews';
 import ServiceShareSaveActions from './ServiceShareSaveActions';
-import { getServiceMeta, type Service } from './serviceListData';
+import { getServiceMeta, getServicePackages, type Service, type ServicePackage } from './serviceListData';
 
 interface SingleServicePageProps {
   service: Service;
@@ -20,6 +21,21 @@ interface SingleServicePageProps {
 
 export default function SingleServicePage({ service }: SingleServicePageProps) {
   const meta = getServiceMeta(service);
+  const packages = getServicePackages(service);
+  const [selectedPackageId, setSelectedPackageId] = useState(
+    packages[0]?.id ?? 'basic',
+  );
+  const planCardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const nextPackages = getServicePackages(service);
+    setSelectedPackageId(nextPackages[0]?.id ?? 'basic');
+  }, [service]);
+
+  const handleSelectPackage = useCallback((packageId: ServicePackage['id']) => {
+    setSelectedPackageId(packageId);
+    planCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, []);
 
   return (
     <div className="select-none bg-white pb-12 pt-8 font-normal text-black antialiased [&_button]:font-normal [&_h1]:font-normal [&_h2]:font-normal [&_h3]:font-normal [&_label]:font-normal [&_p]:font-normal [&_span]:font-normal">
@@ -39,14 +55,24 @@ export default function SingleServicePage({ service }: SingleServicePageProps) {
             </div>
 
             <ServiceAbout service={service} />
-            <ServiceComparePackages service={service} />
+            <ServiceComparePackages
+              service={service}
+              selectedPackageId={selectedPackageId}
+              onSelectPackage={handleSelectPackage}
+            />
             <ServiceFaq service={service} />
             <ServiceReviews service={service} />
           </div>
 
           <aside className="mx-auto w-full max-w-[19.5rem] sm:max-w-[20rem] lg:sticky lg:top-20 lg:col-span-4 lg:mx-0 lg:ml-auto lg:self-start">
             <div className="space-y-5">
-              <ServicePlanCard service={service} />
+              <div ref={planCardRef} className="scroll-mt-24">
+                <ServicePlanCard
+                  service={service}
+                  selectedPackageId={selectedPackageId}
+                  onSelectPackage={handleSelectPackage}
+                />
+              </div>
               <ServiceSellerCard service={service} />
             </div>
           </aside>

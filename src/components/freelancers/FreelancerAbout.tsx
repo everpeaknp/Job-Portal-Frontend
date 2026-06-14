@@ -4,6 +4,7 @@ import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Send, CheckCircle2, X } from 'lucide-react';
 import { formatNPR } from '@/lib/nepalLocale';
+import UserAvatar from '@/components/common/UserAvatar';
 import {
   buildFreelancerAboutStats,
   FREELANCER_ABOUT_DESCRIPTION,
@@ -37,6 +38,12 @@ interface MetricItem {
   icon: ReactNode;
 }
 
+interface SidebarRow {
+  label: string;
+  value: string;
+  icon: ReactNode;
+}
+
 function MetricIconWrap({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#FAF0E3]">
@@ -58,7 +65,10 @@ export default function FreelancerAbout({ freelancer, profileExtras, onContact }
     }),
     [freelancer, profileExtras?.aboutStats],
   );
-  const descriptionParagraphs = profileExtras?.description ?? [...FREELANCER_ABOUT_DESCRIPTION];
+  const descriptionParagraphs = profileExtras
+    ? (profileExtras.description ?? [])
+    : [...FREELANCER_ABOUT_DESCRIPTION];
+  const usingApiProfile = Boolean(profileExtras);
   const educationItems: FreelancerEducationItem[] | undefined = profileExtras?.education;
   const experienceItems: FreelancerExperienceItem[] | undefined = profileExtras?.experience;
   const awardItems: FreelancerAwardItem[] | undefined = profileExtras?.awards;
@@ -158,6 +168,114 @@ export default function FreelancerAbout({ freelancer, profileExtras, onContact }
     },
   ];
 
+  const visibleMetrics = usingApiProfile
+    ? metrics.filter((metric) => {
+        if (metric.label === 'Job Success') return freelancer.jobSuccess > 0;
+        if (metric.label === 'Total Jobs') return stats.totalJobs > 0;
+        if (metric.label === 'Total Hours') return stats.totalHours > 0;
+        if (metric.label === 'In Queue Service') return stats.inQueue > 0;
+        return true;
+      })
+    : metrics;
+
+  const hasSidebarValue = (value?: string) => {
+    const trimmed = value?.trim();
+    return Boolean(trimmed && trimmed !== '—' && trimmed !== 'Select');
+  };
+
+  const sidebarRows: SidebarRow[] = [
+    freelancer.location
+      ? {
+          label: 'Location',
+          value: freelancer.location,
+          icon: (
+            <svg className="h-5 w-5 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+          ),
+        }
+      : null,
+    hasSidebarValue(stats.memberSinceShort)
+      ? {
+          label: 'Member since',
+          value: stats.memberSinceShort,
+          icon: (
+            <svg className="h-5 w-5 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+              <rect x="7" y="13" width="4" height="4" rx="0.5" fill="currentColor" className="text-neutral-400" />
+              <rect x="13" y="13" width="4" height="4" rx="0.5" fill="currentColor" className="text-neutral-400" />
+            </svg>
+          ),
+        }
+      : null,
+    hasSidebarValue(stats.lastDelivery)
+      ? {
+          label: 'Last Delivery',
+          value: stats.lastDelivery,
+          icon: (
+            <svg className="h-5 w-5 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+              <path d="m9 16 2 2 4-4" />
+            </svg>
+          ),
+        }
+      : null,
+    hasSidebarValue(stats.gender)
+      ? {
+          label: 'Gender',
+          value: stats.gender,
+          icon: (
+            <svg className="h-5 w-5 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="10" cy="14" r="5" />
+              <path d="m14 10 5-5" />
+              <path d="M14 5h5v5" />
+            </svg>
+          ),
+        }
+      : null,
+    freelancer.languages.length > 0
+      ? {
+          label: 'Languages',
+          value: languagesLabel,
+          icon: (
+            <svg className="h-5 w-5 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+              <path d="M2 12h20" />
+            </svg>
+          ),
+        }
+      : null,
+    hasSidebarValue(stats.englishLevel)
+      ? {
+          label: 'English Level',
+          value: stats.englishLevel,
+          icon: (
+            <svg className="h-5 w-5 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <line x1="4" y1="21" x2="4" y2="14" />
+              <line x1="4" y1="10" x2="4" y2="3" />
+              <line x1="12" y1="21" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12" y2="3" />
+              <line x1="20" y1="21" x2="20" y2="16" />
+              <line x1="20" y1="12" x2="20" y2="3" />
+              <line x1="2" y1="14" x2="6" y2="14" />
+              <line x1="10" y1="8" x2="14" y2="8" />
+              <line x1="18" y1="16" x2="22" y2="16" />
+            </svg>
+          ),
+        }
+      : null,
+  ].flatMap((row) => (row ? [row] : []));
+
+  const showHourlyRate = !usingApiProfile || freelancer.rate > 0;
+
   const handleMessageSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!contactMessage.trim() || contactSending) {
@@ -183,31 +301,37 @@ export default function FreelancerAbout({ freelancer, profileExtras, onContact }
       <div className="mx-auto w-full max-w-7xl">
         <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12 lg:gap-12">
           <div className="flex flex-col pt-2 lg:col-span-8">
-            <div className="mb-8 grid grid-cols-2 gap-x-4 gap-y-8 border-b border-neutral-100 pb-10 sm:grid-cols-2 md:grid-cols-4 md:gap-6">
-              {metrics.map((metric) => (
-                <div key={metric.label} className="flex min-w-0 items-center gap-3">
-                  <MetricIconWrap>{metric.icon}</MetricIconWrap>
-                  <div className="flex min-w-0 flex-col">
-                    <span className="text-xs font-normal leading-tight text-black sm:text-sm">
-                      {metric.label}
-                    </span>
-                    <span className="mt-1 text-sm font-normal leading-tight text-black">
-                      {metric.value}
-                    </span>
+            {visibleMetrics.length > 0 ? (
+              <div className="mb-8 grid grid-cols-2 gap-x-4 gap-y-8 border-b border-neutral-100 pb-10 sm:grid-cols-2 md:grid-cols-4 md:gap-6">
+                {visibleMetrics.map((metric) => (
+                  <div key={metric.label} className="flex min-w-0 items-center gap-3">
+                    <MetricIconWrap>{metric.icon}</MetricIconWrap>
+                    <div className="flex min-w-0 flex-col">
+                      <span className="text-xs font-normal leading-tight text-black sm:text-sm">
+                        {metric.label}
+                      </span>
+                      <span className="mt-1 text-sm font-normal leading-tight text-black">
+                        {metric.value}
+                      </span>
+                    </div>
                   </div>
+                ))}
+              </div>
+            ) : null}
+
+            {descriptionParagraphs.length > 0 ? (
+              <>
+                <h3 className="mb-5 text-lg font-normal leading-tight tracking-tight text-black sm:text-xl">
+                  Description
+                </h3>
+
+                <div className="space-y-6 text-xs font-normal leading-relaxed text-black sm:text-sm">
+                  {descriptionParagraphs.map((paragraph) => (
+                    <p key={paragraph.slice(0, 24)}>{paragraph}</p>
+                  ))}
                 </div>
-              ))}
-            </div>
-
-            <h3 className="mb-5 text-lg font-normal leading-tight tracking-tight text-black sm:text-xl">
-              Description
-            </h3>
-
-            <div className="space-y-6 text-xs font-normal leading-relaxed text-black sm:text-sm">
-              {descriptionParagraphs.map((paragraph) => (
-                <p key={paragraph.slice(0, 24)}>{paragraph}</p>
-              ))}
-            </div>
+              </>
+            ) : null}
 
             <FreelancerSkills freelancer={freelancer} skills={skillItems} />
 
@@ -228,91 +352,22 @@ export default function FreelancerAbout({ freelancer, profileExtras, onContact }
           <div className="lg:col-span-4">
             <div className="w-full max-w-[21rem] sm:max-w-[22rem]">
             <div className="rounded-none border border-neutral-200/65 bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-sm md:p-8">
-              <div className="flex items-baseline border-b border-neutral-100 pb-6">
-                <span className="text-3xl font-normal tracking-tight text-black sm:text-4xl">
-                  {formatNPR(freelancer.rate)}
-                </span>
-                <span className="ml-1.5 text-sm font-normal lowercase text-neutral-500">/per hour</span>
-              </div>
+              {showHourlyRate ? (
+                <div className="flex items-baseline border-b border-neutral-100 pb-6">
+                  <span className="text-3xl font-normal tracking-tight text-black sm:text-4xl">
+                    {formatNPR(freelancer.rate)}
+                  </span>
+                  <span className="ml-1.5 text-sm font-normal lowercase text-neutral-500">/per hour</span>
+                </div>
+              ) : null}
 
-              <div className="flex flex-col divide-y divide-neutral-100 py-2.5 font-sans">
-                <DetailRow
-                  label="Location"
-                  value={freelancer.location}
-                  icon={
-                    <svg className="h-5 w-5 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                      <circle cx="12" cy="10" r="3" />
-                    </svg>
-                  }
-                />
-                <DetailRow
-                  label="Member since"
-                  value={stats.memberSinceShort}
-                  icon={
-                    <svg className="h-5 w-5 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                      <line x1="16" y1="2" x2="16" y2="6" />
-                      <line x1="8" y1="2" x2="8" y2="6" />
-                      <line x1="3" y1="10" x2="21" y2="10" />
-                      <rect x="7" y="13" width="4" height="4" rx="0.5" fill="currentColor" className="text-neutral-400" />
-                      <rect x="13" y="13" width="4" height="4" rx="0.5" fill="currentColor" className="text-neutral-400" />
-                    </svg>
-                  }
-                />
-                <DetailRow
-                  label="Last Delivery"
-                  value={stats.lastDelivery}
-                  icon={
-                    <svg className="h-5 w-5 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                      <line x1="16" y1="2" x2="16" y2="6" />
-                      <line x1="8" y1="2" x2="8" y2="6" />
-                      <line x1="3" y1="10" x2="21" y2="10" />
-                      <path d="m9 16 2 2 4-4" />
-                    </svg>
-                  }
-                />
-                <DetailRow
-                  label="Gender"
-                  value={stats.gender}
-                  icon={
-                    <svg className="h-5 w-5 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                      <circle cx="10" cy="14" r="5" />
-                      <path d="m14 10 5-5" />
-                      <path d="M14 5h5v5" />
-                    </svg>
-                  }
-                />
-                <DetailRow
-                  label="Languages"
-                  value={languagesLabel}
-                  icon={
-                    <svg className="h-5 w-5 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-                      <path d="M2 12h20" />
-                    </svg>
-                  }
-                />
-                <DetailRow
-                  label="English Level"
-                  value={stats.englishLevel}
-                  icon={
-                    <svg className="h-5 w-5 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                      <line x1="4" y1="21" x2="4" y2="14" />
-                      <line x1="4" y1="10" x2="4" y2="3" />
-                      <line x1="12" y1="21" x2="12" y2="12" />
-                      <line x1="12" y1="8" x2="12" y2="3" />
-                      <line x1="20" y1="21" x2="20" y2="16" />
-                      <line x1="20" y1="12" x2="20" y2="3" />
-                      <line x1="2" y1="14" x2="6" y2="14" />
-                      <line x1="10" y1="8" x2="14" y2="8" />
-                      <line x1="18" y1="16" x2="22" y2="16" />
-                    </svg>
-                  }
-                />
-              </div>
+              {sidebarRows.length > 0 ? (
+                <div className={`flex flex-col divide-y divide-neutral-100 py-2.5 font-sans ${showHourlyRate ? '' : 'pt-0'}`}>
+                  {sidebarRows.map((row) => (
+                    <DetailRow key={row.label} label={row.label} value={row.value} icon={row.icon} />
+                  ))}
+                </div>
+              ) : null}
 
               <button
                 type="button"
@@ -368,11 +423,12 @@ export default function FreelancerAbout({ freelancer, profileExtras, onContact }
                     <div
                       className={`flex h-10 w-10 shrink-0 overflow-hidden rounded-none border p-0.5 ${ringParts.join(' ')}`}
                     >
-                      <img
-                        src={freelancer.avatar}
+                      <UserAvatar
+                        src={freelancer.avatar || undefined}
+                        name={freelancer.name}
                         alt={freelancer.name}
-                        className="h-full w-full rounded-none object-cover"
-                        referrerPolicy="no-referrer"
+                        size="sm"
+                        className="h-full w-full"
                       />
                     </div>
                     <div>

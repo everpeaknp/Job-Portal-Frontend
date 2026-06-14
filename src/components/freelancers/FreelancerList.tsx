@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { formatFreelancerRating } from '@/lib/freelancerProfileFromApi';
 import { formatNPR } from '@/lib/nepalLocale';
+import UserAvatar from '@/components/common/UserAvatar';
 import type { Freelancer } from './freelancerData';
 import { getFreelancerProfilePath } from './freelancerSlug';
 
@@ -386,11 +387,12 @@ export default function FreelancerList({
                 >
                   <div className="flex flex-col items-center text-center">
                     <div className="relative mb-5 mt-1 select-none">
-                      <img
-                        src={fl.avatar}
+                      <UserAvatar
+                        src={fl.avatar || undefined}
+                        name={fl.name}
                         alt={fl.name}
-                        className="h-[105px] w-[105px] rounded-full bg-neutral-100 object-cover select-none"
-                        referrerPolicy="no-referrer"
+                        size="xl"
+                        className="h-[105px] w-[105px] select-none text-3xl"
                       />
                       {fl.availableNow && (
                         <span className="absolute bottom-1 right-2.5 inline-block h-3.5 w-3.5 rounded-full border-2 border-white bg-[#52C47F] shadow-sm" />

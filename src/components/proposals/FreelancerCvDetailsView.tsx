@@ -36,11 +36,13 @@ function licenceBadgeIcon(badgeType: string) {
 type FreelancerCvDetailsViewProps = {
   data: FreelancerCvPreviewData;
   expectedSalary?: string;
+  offerAmountLabel?: string;
 };
 
 export default function FreelancerCvDetailsView({
   data,
   expectedSalary,
+  offerAmountLabel = 'Expected salary',
 }: FreelancerCvDetailsViewProps) {
   const skills = data.skills.filter(isFilledSkill).map((row) => row.skill);
   const languages = data.languages.filter(isFilledLanguage);
@@ -69,7 +71,7 @@ export default function FreelancerCvDetailsView({
 
         {expectedSalary ? (
           <div className="mt-5 border-t border-neutral-100/80 pt-5">
-            <ProposalHighlightStat label="Expected salary" value={expectedSalary} />
+            <ProposalHighlightStat label={offerAmountLabel} value={expectedSalary} />
           </div>
         ) : null}
       </div>

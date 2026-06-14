@@ -9,16 +9,26 @@ import {
 } from '@/lib/employerBusinessProfile';
 import {
   categoryNamesForSelect,
+  getListingKind,
   jobFormToTaskPayload,
   loadCategories,
+  loadLanguages,
+  loadSkills,
+  languageNamesForSelect,
   projectFormToTaskPayload,
   resolveCategoryId,
   serviceFormToTaskPayload,
+  skillNamesForSelect,
   taskToJobFormData,
   taskToProjectFormData,
   taskToServiceFormData,
   uploadTaskFiles,
 } from '@/lib/dashboardListingApi';
+import {
+  buildPostTaskApiPayload,
+  enrichPostTaskPayloadWithGeocode,
+} from '@/lib/postTaskPayload';
+import { taskToSimilarPrefill } from '@/lib/similarTask';
 import { getMediaUrl } from '@/lib/utils';
 import { jobService } from '@/services/job.service';
 import { projectService } from '@/services/project.service';
@@ -34,8 +44,10 @@ import DashboardCreateService, {
 import { type DashboardCreateTab, getDashboardListHref as listHref } from './dashboardTabs';
 import type { FormUploadsPayload } from './types';
 import { initialGalleryUrls, resolveAttachmentUploads, resolveGalleryUploads } from './uploadUtils';
-import type { Category, Task } from '@/types';
+import type { Category, MarketplaceLanguage, MarketplaceSkill, Task } from '@/types';
 import DashboardCreateProject, { type CreateProjectFormData } from './DashboardCreateProject';
+import DashboardCreateTask from './DashboardCreateTask';
+import type { TaskData } from '@/components/post-task/TitleDateStep';
 
 type DashboardCreateRouteProps = {
   tab: DashboardCreateTab;
@@ -50,18 +62,40 @@ export default function DashboardCreateRoute({ tab, editSlug }: DashboardCreateR
   const isEdit = Boolean(editSlug);
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [jobCategories, setJobCategories] = useState<Category[]>([]);
+  const [jobSkills, setJobSkills] = useState<MarketplaceSkill[]>([]);
+  const [projectSkills, setProjectSkills] = useState<MarketplaceSkill[]>([]);
+  const [serviceSkills, setServiceSkills] = useState<MarketplaceSkill[]>([]);
+  const [projectLanguages, setProjectLanguages] = useState<MarketplaceLanguage[]>([]);
+  const [serviceLanguages, setServiceLanguages] = useState<MarketplaceLanguage[]>([]);
   const serviceCategoryOptions = useMemo(() => categoryNamesForSelect(categories), [categories]);
+  const jobCategoryOptions = useMemo(() => categoryNamesForSelect(jobCategories), [jobCategories]);
   const projectCategoryOptions = serviceCategoryOptions;
+  const jobSkillOptions = useMemo(() => skillNamesForSelect(jobSkills), [jobSkills]);
+  const projectSkillOptions = useMemo(() => skillNamesForSelect(projectSkills), [projectSkills]);
+  const serviceSkillOptions = useMemo(() => skillNamesForSelect(serviceSkills), [serviceSkills]);
+  const projectLanguageOptions = useMemo(() => languageNamesForSelect(projectLanguages), [projectLanguages]);
+  const serviceLanguageOptions = useMemo(() => languageNamesForSelect(serviceLanguages), [serviceLanguages]);
   const [loadingTask, setLoadingTask] = useState(isEdit);
   const [submitting, setSubmitting] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
+  const [taskCategoriesLoaded, setTaskCategoriesLoaded] = useState(false);
 
   const goBack = useCallback(() => {
     router.push(listHref(tab));
   }, [router, tab]);
 
   useEffect(() => {
-    void loadCategories().then(setCategories);
+    void loadCategories('task').then((rows) => {
+      setCategories(rows);
+      setTaskCategoriesLoaded(true);
+    });
+    void loadCategories('job').then(setJobCategories);
+    void loadSkills('job').then(setJobSkills);
+    void loadSkills('project').then(setProjectSkills);
+    void loadSkills('service').then(setServiceSkills);
+    void loadLanguages('project').then(setProjectLanguages);
+    void loadLanguages('service').then(setServiceLanguages);
   }, []);
 
   useEffect(() => {
@@ -83,6 +117,11 @@ export default function DashboardCreateRoute({ tab, editSlug }: DashboardCreateR
         if (cancelled) return;
         if (!response.success || !response.data) {
           toast.error(response.message || 'Could not load listing');
+          router.push(listHref(tab));
+          return;
+        }
+        if (tab === 'task' && getListingKind(response.data) !== 'task') {
+          toast.error('This listing is not a marketplace task.');
           router.push(listHref(tab));
           return;
         }
@@ -150,7 +189,7 @@ export default function DashboardCreateRoute({ tab, editSlug }: DashboardCreateR
     setSubmitting(true);
 
     try {
-      const categoryId = await resolveCategoryId(data.category, categories);
+      const categoryId = await resolveCategoryId(data.category, jobCategories);
       const payload = jobFormToTaskPayload(data, categoryId);
 
       if (isEdit && editTask?.slug) {
@@ -241,6 +280,72 @@ export default function DashboardCreateRoute({ tab, editSlug }: DashboardCreateR
     }
   };
 
+  const handleTaskSubmit = async (data: TaskData) => {
+    if (submitting) return;
+    setSubmitting(true);
+
+    try {
+      let payload = buildPostTaskApiPayload(data, data.categoryId);
+      payload = await enrichPostTaskPayloadWithGeocode(data, payload);
+
+      if (isEdit && editTask?.slug) {
+        const response = await taskService.updateTask(editTask.slug, payload as never);
+        if (!response.success || !response.data) {
+          throw new Error(response.message || 'Failed to update task');
+        }
+        if (data.images.length) {
+          await uploadTaskFiles(response.data.id, data.images);
+        }
+        toast.success('Task updated');
+        router.push(listHref('task'));
+        return;
+      }
+
+      const response = await taskService.createTask(payload as never);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to create task');
+      }
+
+      if (data.images.length) {
+        await uploadTaskFiles(response.data.id, data.images);
+      }
+
+      const publicSlug = response.data.slug;
+      if (publicSlug) {
+        toast.success('Task posted', {
+          description: `View at /task/${publicSlug}`,
+          action: {
+            label: 'Open',
+            onClick: () => router.push(`/task/${publicSlug}`),
+          },
+        });
+      } else {
+        toast.success('Task posted');
+      }
+      router.push(listHref('task'));
+    } catch (error: unknown) {
+      const fieldErrors = (error as { errors?: Record<string, string[]> })?.errors;
+      if (fieldErrors && Object.keys(fieldErrors).length > 0) {
+        const [firstField] = Object.keys(fieldErrors);
+        const firstMsg = fieldErrors[firstField]?.[0] || 'Invalid value';
+        toast.error(`${firstField.replace(/_/g, ' ')}: ${firstMsg}`);
+      } else {
+        const message =
+          error instanceof Error
+            ? error.message
+            : typeof error === 'object' &&
+                error !== null &&
+                'message' in error &&
+                typeof (error as { message: unknown }).message === 'string'
+              ? (error as { message: string }).message
+              : 'Failed to save task';
+        toast.error(message);
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loadingTask) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center bg-[#f0efec] text-sm text-neutral-500">
@@ -267,6 +372,8 @@ export default function DashboardCreateRoute({ tab, editSlug }: DashboardCreateR
         initialData={editTask ? taskToServiceFormData(editTask) : undefined}
         initialGalleryUrls={gallery}
         categoryOptions={serviceCategoryOptions}
+        skillOptions={serviceSkillOptions}
+        languageOptions={serviceLanguageOptions}
       />
     );
   }
@@ -281,6 +388,23 @@ export default function DashboardCreateRoute({ tab, editSlug }: DashboardCreateR
           editTask ? taskToJobFormData(editTask) : createJobDefaults ?? undefined
         }
         postingContext={postingContext}
+        categoryOptions={jobCategoryOptions}
+        skillOptions={jobSkillOptions}
+      />
+    );
+  }
+
+  if (tab === 'task') {
+    return (
+      <DashboardCreateTask
+        mode={isEdit ? 'edit' : 'create'}
+        onBack={goBack}
+        onSubmit={handleTaskSubmit}
+        postingContext={postingContext}
+        initialData={editTask ? taskToSimilarPrefill(editTask) : undefined}
+        categories={categories}
+        categoriesLoaded={taskCategoriesLoaded}
+        isLoading={submitting}
       />
     );
   }
@@ -300,6 +424,8 @@ export default function DashboardCreateRoute({ tab, editSlug }: DashboardCreateR
       initialData={editTask ? taskToProjectFormData(editTask) : undefined}
       initialAttachments={projectAttachments}
       categoryOptions={projectCategoryOptions}
+      skillOptions={projectSkillOptions}
+      languageOptions={projectLanguageOptions}
     />
   );
 }

@@ -39,7 +39,7 @@ export default function FreelancerTransport({ options }: FreelancerTransportProp
   return (
     <div className="mt-10 w-full max-w-4xl">
       <h3 className="mb-8 text-xl font-normal tracking-tight text-black sm:text-2xl">
-        How do you get around?
+        Transport and mobility
       </h3>
 
       <div className="flex flex-wrap justify-start gap-3">

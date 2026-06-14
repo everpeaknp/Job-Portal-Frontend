@@ -4,29 +4,30 @@ export function TaskCardSkeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'relative flex w-full animate-pulse flex-col overflow-hidden rounded-2xl bg-gradient-to-br from-brand-dark via-[#1e5c48] to-brand-emerald p-4 sm:p-5',
+        'relative flex w-full animate-pulse flex-col overflow-hidden rounded-[20px] border border-neutral-200/40 bg-[#fbf2ed] p-4 shadow-sm sm:rounded-[24px] sm:p-5',
         className,
       )}
       aria-hidden
     >
-      <div className="mb-4 flex items-start justify-between gap-3">
+      <div className="pointer-events-none absolute -bottom-8 -right-8 h-24 w-24 rounded-full bg-[#fcd074]/40 sm:-bottom-10 sm:-right-10" />
+      <div className="relative z-10 mb-4 flex items-start justify-between gap-3">
         <div className="flex-1 space-y-2">
-          <div className="h-4 w-full rounded bg-white/20" />
-          <div className="h-4 w-3/5 rounded bg-white/15" />
+          <div className="h-4 w-full rounded bg-neutral-200/80" />
+          <div className="h-4 w-3/5 rounded bg-neutral-200/60" />
         </div>
-        <div className="h-5 w-16 shrink-0 rounded bg-white/25" />
+        <div className="h-5 w-16 shrink-0 rounded bg-[#52C47F]/20" />
       </div>
-      <div className="mb-4 space-y-2.5">
-        <div className="h-3.5 w-4/5 rounded bg-white/15" />
-        <div className="h-3.5 w-2/3 rounded bg-white/15" />
-        <div className="h-3.5 w-1/2 rounded bg-white/15" />
+      <div className="relative z-10 mb-4 space-y-2.5">
+        <div className="h-3.5 w-4/5 rounded bg-neutral-200/70" />
+        <div className="h-3.5 w-2/3 rounded bg-neutral-200/60" />
+        <div className="h-3.5 w-1/2 rounded bg-neutral-200/50" />
       </div>
-      <div className="flex items-center justify-between pt-2">
+      <div className="relative z-10 flex items-center justify-between pt-2">
         <div className="space-y-1.5">
-          <div className="h-3.5 w-20 rounded bg-white/20" />
-          <div className="h-3 w-14 rounded bg-white/10" />
+          <div className="h-3.5 w-20 rounded bg-neutral-200/80" />
+          <div className="h-3 w-14 rounded bg-neutral-200/50" />
         </div>
-        <div className="h-10 w-10 shrink-0 rounded-full bg-white/20 ring-2 ring-white/10" />
+        <div className="h-10 w-10 shrink-0 rounded-full bg-neutral-200/80 ring-2 ring-white/80" />
       </div>
     </div>
   );

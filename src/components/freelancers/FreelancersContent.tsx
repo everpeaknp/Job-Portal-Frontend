@@ -7,6 +7,7 @@ import FreelancerHero from './FreelancerHero';
 import FreelancerList from './FreelancerList';
 import type { Freelancer } from './freelancerData';
 import { mapDirectoryEntriesToFreelancers } from '@/lib/freelancerProfileFromApi';
+import { isDirectoryEntryProfileConfigured } from '@/lib/freelancerProfileReadiness';
 import { userService, type UserDirectoryEntry } from '@/services/user.service';
 
 const DIRECTORY_PAGE_SIZE = 100;
@@ -15,7 +16,7 @@ const MAX_DIRECTORY_PAGES = 50;
 function isFreelancerDirectoryEntry(entry: UserDirectoryEntry): boolean {
   if (!entry?.id) return false;
   if (entry.role === 'admin') return false;
-  return true;
+  return entry.role === 'tasker';
 }
 
 async function fetchAllFreelancers(): Promise<Freelancer[]> {
@@ -27,6 +28,7 @@ async function fetchAllFreelancers(): Promise<Freelancer[]> {
 
   do {
     const res = await userService.getUserDirectory({
+      role: 'tasker',
       sort_by: 'rating',
       page,
       page_size: DIRECTORY_PAGE_SIZE,
@@ -45,7 +47,9 @@ async function fetchAllFreelancers(): Promise<Freelancer[]> {
       if (!entry?.id || seenIds.has(entry.id)) continue;
       seenIds.add(entry.id);
       if (isFreelancerDirectoryEntry(entry)) {
-        entries.push(entry);
+        if (isDirectoryEntryProfileConfigured(entry)) {
+          entries.push(entry);
+        }
       }
     }
 

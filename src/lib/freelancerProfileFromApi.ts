@@ -1,6 +1,5 @@
 import { format } from 'date-fns';
 import {
-  buildFreelancerHeadline,
   type Freelancer,
   type FreelancerAboutStats,
   type FreelancerAwardItem,
@@ -12,6 +11,7 @@ import {
 } from '@/components/freelancers/freelancerData';
 import { genderLabelFromApi, parseSkillsFromApi, API_TO_DASHBOARD_TRANSPORT } from '@/lib/dashboardProfileSkills';
 import { getVerifiedLicenceBadges } from '@/components/users/PublicLicenceBadges';
+import { countConfiguredFromReviews } from '@/lib/freelancerProfileReadiness';
 import { formatShortLocation, reviewerDisplayName } from '@/lib/publicProfile';
 import { getMediaUrl } from '@/lib/utils';
 import type { PortfolioItem, UserBadge } from '@/types';
@@ -24,9 +24,6 @@ const RING_COLORS = [
   'bg-[#EBF7F2] border-[#A8DBCE]',
   'bg-[#EBF4FA] border-[#AFCBE3]',
 ] as const;
-
-const DEFAULT_AVATAR =
-  'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150';
 
 export interface FreelancerProfileExtras {
   userId: string;
@@ -45,6 +42,7 @@ export interface FreelancerProfileExtras {
 export interface FreelancerProfileBundle {
   freelancer: Freelancer;
   extras: FreelancerProfileExtras;
+  isProfileConfigured: boolean;
 }
 
 function hashSeed(id: string): number {
@@ -93,9 +91,7 @@ function deriveRole(
 
 function buildDescription(bio?: string): string[] {
   const text = bio?.trim();
-  if (!text) {
-    return ['This freelancer has not added a description yet.'];
-  }
+  if (!text) return [];
   const paragraphs = text.split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
   return paragraphs.length > 0 ? paragraphs : [text];
 }
@@ -172,14 +168,14 @@ function mapPortfolioToFeatured(
     id: String(item.id),
     category: 'Portfolio',
     title: item.title,
-    image: getMediaUrl(item.thumbnail || item.file) || DEFAULT_AVATAR,
+    image: getMediaUrl(item.thumbnail || item.file) || '',
     rating: freelancer.rating,
     reviews: freelancer.reviews,
-    startingPrice: Math.max(
-      freelancer.rate,
-      Math.round(freelancer.rate * (2.5 + index * 0.25)),
-    ),
-    description: item.description?.trim() || 'Portfolio work by this freelancer.',
+    startingPrice:
+      freelancer.rate > 0
+        ? Math.max(freelancer.rate, Math.round(freelancer.rate * (2.5 + index * 0.25)))
+        : 0,
+    description: item.description?.trim() || '',
     details: [],
   }));
 }
@@ -196,14 +192,20 @@ export function buildFreelancerProfileBundle(
   reviews: PublicProfileReview[],
   portfolio: PortfolioItem[],
 ): FreelancerProfileBundle {
+  const isProfileConfigured =
+    profile.profile_configured ??
+    countConfiguredFromReviews(profile, reviews, portfolio);
+
   const parsed = parseSkillsFromApi(profile.skills ?? []);
-  const skillNames = parsed.skillRows.map((row) => row.skill).filter(Boolean);
+  const skillNames = parsed.skillRows
+    .map((row) => row.skill)
+    .filter((skill) => Boolean(skill?.trim()) && skill !== 'Select');
   const transportLabels =
     parsed.transport.length > 0
       ? parsed.transport
-      : (profile.transportation_tags ?? []).map(
-          (tag) => API_TO_DASHBOARD_TRANSPORT[tag] || tag,
-        );
+      : (profile.transportation_tags ?? [])
+          .map((tag) => API_TO_DASHBOARD_TRANSPORT[tag] || tag)
+          .filter(Boolean);
   const licenceBadges = getVerifiedLicenceBadges(profile.badges);
   const specialization =
     profile.specialization?.trim() ||
@@ -226,25 +228,30 @@ export function buildFreelancerProfileBundle(
   );
   const languages = parsed.languages
     .map((row) => row.language)
-    .filter((name) => Boolean(name?.trim()));
+    .filter((name) => Boolean(name?.trim()) && name !== 'Select');
+
+  const hourlyRate = Number(profile.hourly_rate ?? 0) || 0;
+  const avatarUrl = getMediaUrl(profile.profile_image) || '';
+  const location = formatShortLocation(profile);
+  const headline = profile.tagline?.trim() || '';
 
   const freelancer: Freelancer = {
     id: profile.id,
     username: profile.username?.trim() || profile.id,
     name: profile.display_name || profile.full_name || profile.username || 'Freelancer',
-    role,
-    headline: profile.tagline?.trim() || buildFreelancerHeadline(role),
+    role: role === 'Freelancer' && !specialization && !skillNames[0] ? '' : role,
+    headline,
     memberSince: formatMemberSince(profile.date_joined),
     rating: rating > 0 ? rating : reviewCount > 0 ? 5 : 0,
     reviews: reviewCount,
-    rate: Number(profile.hourly_rate ?? 0) || 0,
-    avatar: getMediaUrl(profile.profile_image) || DEFAULT_AVATAR,
-    tags: skillNames.length > 0 ? skillNames.slice(0, 6) : ['General'],
-    location: formatShortLocation(profile) || '—',
+    rate: hourlyRate,
+    avatar: avatarUrl,
+    tags: skillNames.slice(0, 6),
+    location: location && location !== '—' ? location : '',
     availableNow: Boolean(profile.is_online),
     jobSuccess,
     level: deriveLevel(tasksCompleted, rating),
-    languages: languages.length > 0 ? languages : ['English'],
+    languages,
     bestSeller: Boolean(profile.is_verified_tasker) || tasksCompleted >= 50,
     ringColor: RING_COLORS[seed % RING_COLORS.length],
   };
@@ -258,16 +265,17 @@ export function buildFreelancerProfileBundle(
       totalJobs: tasksCompleted,
       totalHours: tasksCompleted > 0 ? tasksCompleted * 8 : 0,
       inQueue: 0,
-      lastDelivery: profile.online_status?.trim() || '—',
-      gender: genderLabelFromApi(profile.gender) !== 'Select'
-        ? genderLabelFromApi(profile.gender)
-        : '—',
+      lastDelivery: profile.online_status?.trim() || '',
+      gender:
+        genderLabelFromApi(profile.gender) !== 'Select'
+          ? genderLabelFromApi(profile.gender)
+          : '',
       englishLevel: pickEnglishLevel(parsed.languages),
       memberSinceShort: formatMemberSinceShort(profile.date_joined),
       replyMinutes:
         typeof profile.response_time === 'number' && profile.response_time > 0
           ? profile.response_time
-          : 15,
+          : 0,
     },
     education: mapEducation(parsed.education),
     experience: mapExperience(parsed.experience),
@@ -279,7 +287,7 @@ export function buildFreelancerProfileBundle(
     reviews: mappedReviews,
   };
 
-  return { freelancer, extras };
+  return { freelancer, extras, isProfileConfigured };
 }
 
 function deriveRoleFromEntry(entry: UserDirectoryEntry, primarySkill?: string): string {
@@ -319,30 +327,30 @@ export function mapDirectoryEntryToFreelancer(entry: UserDirectoryEntry): Freela
   const languageTags = (entry.language_tags ?? []).filter(Boolean);
   const displayName =
     entry.full_name?.trim() || entry.username?.trim() || 'Freelancer';
+  const location = formatShortLocation({
+    city: entry.city,
+    state: entry.state,
+    country: entry.country,
+    location_display: entry.location_display,
+  });
 
   return {
     id: entry.id,
     username: entry.username?.trim() || entry.id,
     name: displayName,
-    role,
-    headline: entry.tagline?.trim() || buildFreelancerHeadline(role),
+    role: role === 'Freelancer' && !entry.specialization?.trim() && !skillTags[0] ? '' : role,
+    headline: entry.tagline?.trim() || '',
     memberSince: formatMemberSince(entry.date_joined),
     rating: rating > 0 ? rating : reviewCount > 0 ? 5 : 0,
     reviews: reviewCount,
     rate: Number(entry.hourly_rate ?? 0) || 0,
-    avatar: getMediaUrl(entry.profile_image) || DEFAULT_AVATAR,
-    tags: skillTags.length > 0 ? skillTags.slice(0, 6) : ['General'],
-    location:
-      formatShortLocation({
-        city: entry.city,
-        state: entry.state,
-        country: entry.country,
-        location_display: entry.location_display,
-      }) || '—',
+    avatar: getMediaUrl(entry.profile_image) || '',
+    tags: skillTags.slice(0, 6),
+    location: location && location !== '—' ? location : '',
     availableNow: Boolean(entry.is_online),
     jobSuccess: jobSuccessFromEntry(entry),
     level: deriveLevel(tasksCompleted, rating),
-    languages: languageTags.length > 0 ? languageTags : ['English'],
+    languages: languageTags,
     bestSeller: Boolean(entry.is_verified_tasker) || tasksCompleted >= 50,
     ringColor: RING_COLORS[seed % RING_COLORS.length],
   };

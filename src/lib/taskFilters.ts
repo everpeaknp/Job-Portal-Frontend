@@ -1,4 +1,5 @@
 import type { SearchFilters, Task } from '@/types';
+import { resolveTaskCategoryName } from '@/lib/taskUtils';
 
 export function normalizeSearchFilters(filters?: SearchFilters | null): SearchFilters {
   return filters ?? {};
@@ -12,10 +13,7 @@ function toCoord(raw: unknown): number {
 }
 
 function getCategoryName(task: Task): string {
-  if (typeof task.category === 'object' && task.category?.name) {
-    return task.category.name;
-  }
-  return task.category_name || (typeof task.category === 'string' ? task.category : '');
+  return resolveTaskCategoryName(task);
 }
 
 function getWorkType(task: Task): string | undefined {
@@ -118,7 +116,8 @@ export function applyClientTaskFilters(tasks: Task[], filters?: SearchFilters | 
     result = result.filter((t) => {
       const lat = toCoord(t.latitude);
       const lng = toCoord(t.longitude);
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+      // Keep remote or ungeocoded tasks in the browse list; map pins omit them separately.
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return true;
       return haversineKm(userLat, userLng, lat, lng) <= maxKm;
     });
   }

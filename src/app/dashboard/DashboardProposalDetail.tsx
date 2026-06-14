@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ClipboardList, FileText, Loader2, X } from 'lucide-react';
+import { ArrowLeft, ClipboardList, Loader2, X } from 'lucide-react';
 import {
   ProposalDetailPanel,
   ProposalMetaCard,
@@ -11,11 +11,10 @@ import {
   ProposalStatusPill,
 } from '@/components/proposals/ProposalDetailUi';
 import { toast } from 'sonner';
-import JobProposalApplicantPanel from '@/components/proposals/JobProposalApplicantPanel';
+import ProposalApplicantPanel from '@/components/proposals/ProposalApplicantPanel';
 import { useAuth } from '@/hooks/useAuth';
 import { resolveBidListingKind } from '@/lib/buildFreelancerCvData';
 import { formatNPR } from '@/lib/nepalLocale';
-import { getMediaUrl } from '@/lib/utils';
 import { bidService, formatBidDisplayId } from '@/services/bid.service';
 import { paymentService } from '@/services/payment.service';
 import type { Bid } from '@/types';
@@ -282,9 +281,7 @@ export default function DashboardProposalDetail({
         </div>
       </div>
 
-      <div
-        className={`grid min-w-0 gap-6 ${isJobProposal ? 'grid-cols-1' : 'lg:grid-cols-2'}`}
-      >
+      <div className="grid min-w-0 gap-6 lg:grid-cols-2">
         <ProposalDetailPanel
           title="Basic Information"
           description="Proposal reference, applicant contact, and submission timeline."
@@ -316,70 +313,7 @@ export default function DashboardProposalDetail({
           </ProposalMetaGrid>
         </ProposalDetailPanel>
 
-        {isJobProposal ? (
-          <JobProposalApplicantPanel bid={bid} />
-        ) : (
-          <section className="min-w-0 overflow-hidden rounded-xl bg-white p-6 shadow-[0_2px_12px_rgba(0,0,0,0.01)] sm:p-8">
-            <h3 className="mb-4 text-lg font-normal text-black">Offer Details</h3>
-            <dl>
-              <InfoRow label="Amount" value={formatNPR(Number(bid.amount) || 0)} />
-            </dl>
-            <div className="mt-4 min-w-0 border-t border-neutral-100 pt-4">
-              <p className="mb-2 text-sm text-neutral-500">Proposal</p>
-              <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-black [overflow-wrap:anywhere]">
-                {bid.proposal}
-              </p>
-            </div>
-            {bid.cover_letter ? (
-              <div className="mt-4 min-w-0 border-t border-neutral-100 pt-4">
-                <p className="mb-2 text-sm text-neutral-500">Cover letter</p>
-                <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-black [overflow-wrap:anywhere]">
-                  {bid.cover_letter}
-                </p>
-              </div>
-            ) : null}
-            {bid.attachments && bid.attachments.length > 0 ? (
-              <div className="mt-4 min-w-0 border-t border-neutral-100 pt-4">
-                <p className="mb-2 text-sm text-neutral-500">Attachments</p>
-                <ul className="space-y-2">
-                  {bid.attachments.map((url, index) => (
-                    <li key={url}>
-                      <a
-                        href={getMediaUrl(url)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-sm text-[#52C47F] hover:underline"
-                      >
-                        <FileText className="h-4 w-4 shrink-0" />
-                        <span className="break-all">
-                          {(() => {
-                            try {
-                              const name = new URL(url, 'http://localhost').pathname.split('/').pop();
-                              if (name) return decodeURIComponent(name);
-                            } catch {
-                              // ignore
-                            }
-                            return `Attachment ${index + 1}`;
-                          })()}
-                        </span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-            {bid.tasker?.profile_image ? (
-              <div className="mt-4 border-t border-neutral-100 pt-4">
-                <p className="mb-2 text-sm text-neutral-500">Freelancer photo</p>
-                <img
-                  src={getMediaUrl(bid.tasker.profile_image)}
-                  alt=""
-                  className="h-16 w-16 rounded-full object-cover"
-                />
-              </div>
-            ) : null}
-          </section>
-        )}
+        <ProposalApplicantPanel bid={bid} variant={isJobProposal ? 'job' : 'offer'} />
       </div>
 
       {bid.rejection_reason ? (

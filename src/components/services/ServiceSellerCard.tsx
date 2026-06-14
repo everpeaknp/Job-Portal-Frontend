@@ -1,10 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { ArrowUpRight, Star } from 'lucide-react';
 import { formatNPR } from '@/lib/nepalLocale';
 import { getSellerMeta, type Service } from './serviceListData';
-import { getServiceAuthorProfilePath } from './serviceSlug';
+import ServiceAuthorLink from './ServiceAuthorLink';
 
 interface ServiceSellerCardProps {
   service: Service;
@@ -15,8 +14,8 @@ export default function ServiceSellerCard({ service }: ServiceSellerCardProps) {
 
   return (
     <div className="rounded-xl border border-neutral-200/80 bg-white p-6 shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
-      <Link
-        href={getServiceAuthorProfilePath(service)}
+      <ServiceAuthorLink
+        service={service}
         className="flex items-start gap-3.5 transition-opacity hover:opacity-80"
       >
         <div className="relative shrink-0">
@@ -39,7 +38,7 @@ export default function ServiceSellerCard({ service }: ServiceSellerCardProps) {
             <span className="text-neutral-500">({service.reviews} reviews)</span>
           </div>
         </div>
-      </Link>
+      </ServiceAuthorLink>
 
       <div className="mt-6 grid grid-cols-3 gap-3 border-t border-black pt-5 text-center">
         <div>

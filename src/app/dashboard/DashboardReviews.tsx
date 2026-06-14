@@ -1,20 +1,40 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Star, Flag, CornerDownRight, Send, ChevronLeft, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
+import { Star, Flag, CornerDownRight, Send, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
+import { getEmployerBusinessProfileHref } from '@/components/employers/employerSlug';
+import { getFreelancerBusinessProfileHref } from '@/components/freelancers/freelancerSlug';
 import {
+  defaultReviewsTabForRole,
+  emptyReviewsMessage,
+  fetchDashboardReviews,
   filterReviewsByTab,
+  isReviewsTabAllowedForRole,
   mapReviewsToDashboardItems,
+  REVIEWS_TABS_BY_ROLE,
+  REVIEWS_TAB_LABELS,
   type DashboardReviewItem,
   type ReviewsSubTab,
 } from '@/lib/dashboardReviews';
 import { reviewService } from '@/services/review.service';
+import UserAvatar from '@/components/common/UserAvatar';
+import { useAuthStore } from '@/store';
 import { useDashboardSidebarRole } from './DashboardRoleSwitchContext';
 
 export default function DashboardReviews() {
+  const user = useAuthStore((state) => state.user);
   const sidebarRole = useDashboardSidebarRole();
-  const [activeSubTab, setActiveSubTab] = useState<ReviewsSubTab>('jobs');
+  const dashboardRole = sidebarRole === 'customer' ? 'customer' : 'tasker';
+  const visibleTabs = REVIEWS_TABS_BY_ROLE[dashboardRole];
+  const publicProfileHref =
+    dashboardRole === 'tasker'
+      ? getFreelancerBusinessProfileHref(user)
+      : getEmployerBusinessProfileHref(user);
+  const [activeSubTab, setActiveSubTab] = useState<ReviewsSubTab>(() =>
+    defaultReviewsTabForRole(dashboardRole),
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
@@ -28,11 +48,7 @@ export default function DashboardReviews() {
     setLoading(true);
     setLoadError(null);
     try {
-      const res = await reviewService.getReceivedReviews();
-      if (!res.success) {
-        throw new Error(res.message || 'Could not load reviews');
-      }
-      const list = Array.isArray(res.data) ? res.data : [];
+      const list = await fetchDashboardReviews(dashboardRole, user?.username);
       setReviews(mapReviewsToDashboardItems(list));
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not load reviews';
@@ -41,11 +57,20 @@ export default function DashboardReviews() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dashboardRole, user?.username]);
 
   useEffect(() => {
     void loadReviews();
   }, [loadReviews]);
+
+  useEffect(() => {
+    if (!isReviewsTabAllowedForRole(activeSubTab, dashboardRole)) {
+      setActiveSubTab(defaultReviewsTabForRole(dashboardRole));
+      setCurrentPage(1);
+      setActiveReplyId(null);
+      setReplyText('');
+    }
+  }, [activeSubTab, dashboardRole]);
 
   const activeReviews = useMemo(
     () => filterReviewsByTab(reviews, activeSubTab),
@@ -60,8 +85,15 @@ export default function DashboardReviews() {
 
   const subtitle =
     sidebarRole === 'customer'
-      ? 'Reviews from freelancers on tasks you posted.'
-      : 'Reviews from clients on work you completed.';
+      ? 'Reviews shown on your public employer profile and grouped by listing type.'
+      : 'Reviews shown on your public freelancer profile and grouped by listing type.';
+
+  const profileTabHint =
+    activeSubTab === 'profile' && publicProfileHref
+      ? dashboardRole === 'tasker'
+        ? 'Profile shows the same reviews visitors see on your public freelancer page.'
+        : 'Profile shows the same reviews visitors see on your public employer page.'
+      : null;
 
   const handleTabChange = (tab: ReviewsSubTab) => {
     setActiveSubTab(tab);
@@ -122,22 +154,41 @@ export default function DashboardReviews() {
   return (
     <div className="animate-in fade-in -mx-4 -my-6 min-h-screen select-none bg-[#f0efec] p-4 font-sans text-black duration-300 sm:-mx-6 sm:p-6 md:-mx-8 md:p-8">
       <div className="mb-8 max-w-7xl pl-1">
-        <h1 className="text-3xl font-normal leading-tight tracking-tight text-neutral-900">Reviews</h1>
-        <p className="mt-1 text-[15px] font-normal tracking-tight text-neutral-500">{subtitle}</p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-normal leading-tight tracking-tight text-neutral-900">Reviews</h1>
+            <p className="mt-1 text-[15px] font-normal tracking-tight text-neutral-500">{subtitle}</p>
+            {profileTabHint ? (
+              <p className="mt-2 text-sm text-neutral-400">{profileTabHint}</p>
+            ) : null}
+          </div>
+          {publicProfileHref ? (
+            <Link
+              href={publicProfileHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#FCF0ED] px-4 py-2.5 text-sm font-medium text-[#218F56] transition-all hover:bg-[#FCE6E1]"
+            >
+              View public profile
+              <ExternalLink className="h-4 w-4" />
+            </Link>
+          ) : null}
+        </div>
       </div>
 
       <div className="mx-auto max-w-7xl rounded-2xl border border-neutral-100 bg-white p-6 shadow-[0_2px_12px_rgba(0,0,0,0.01)] md:p-8">
         <div className="mb-8 flex items-center justify-between border-b border-neutral-100">
           <div className="flex gap-8">
-            <button type="button" onClick={() => handleTabChange('services')} className={subTabClass('services')}>
-              Services
-            </button>
-            <button type="button" onClick={() => handleTabChange('project')} className={subTabClass('project')}>
-              Project
-            </button>
-            <button type="button" onClick={() => handleTabChange('jobs')} className={subTabClass('jobs')}>
-              Jobs
-            </button>
+            {visibleTabs.map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => handleTabChange(tab)}
+                className={subTabClass(tab)}
+              >
+                {REVIEWS_TAB_LABELS[tab]}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -158,20 +209,30 @@ export default function DashboardReviews() {
           <div className="space-y-8">
             {activeReviews.length === 0 ? (
               <div className="py-20 text-center text-sm text-neutral-400">
-                No reviews on this tab yet. Completed tasks with public feedback appear here.
+                {emptyReviewsMessage(activeSubTab, dashboardRole)}
               </div>
             ) : (
               paginatedReviews.map((review) => (
                 <div key={review.id} className="border-b border-neutral-100 pb-8 last:border-0 last:pb-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div
-                        className={`${review.avatarBg} flex h-[52px] w-[52px] items-center justify-center rounded-full transition-transform hover:scale-105`}
-                      >
-                        <span className="font-sans text-sm font-semibold tracking-wide text-white">
-                          {review.authorInitials}
-                        </span>
-                      </div>
+                      {review.authorAvatar ? (
+                        <UserAvatar
+                          src={review.authorAvatar}
+                          name={review.authorName}
+                          size="lg"
+                          verified={review.authorVerified}
+                          className="h-[52px] w-[52px] shrink-0"
+                        />
+                      ) : (
+                        <div
+                          className={`${review.avatarBg} flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full transition-transform hover:scale-105`}
+                        >
+                          <span className="font-sans text-sm font-semibold tracking-wide text-white">
+                            {review.authorInitials}
+                          </span>
+                        </div>
+                      )}
 
                       <div className="space-y-1">
                         <h4 className="text-[15px] font-medium leading-tight tracking-tight text-neutral-900">

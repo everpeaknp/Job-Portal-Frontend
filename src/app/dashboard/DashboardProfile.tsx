@@ -17,6 +17,7 @@ import {
   type LanguageRow,
   type ProfileLocationType,
 } from '@/lib/dashboardProfileSkills';
+import { languageNamesForSelect, loadLanguages } from '@/lib/dashboardListingApi';
 import LocationFields from '@/components/post-task/LocationFields';
 import { syncUserSkills } from '@/lib/userSkillsSync';
 import type { UserSkill } from '@/types';
@@ -235,7 +236,7 @@ function getSkillSelectValue(row: SkillRow): string {
 
 const POINT_OPTIONS = ['Select', '50', '60', '70', '75', '80', '85', '90', '95', '100'];
 
-const LANGUAGE_OPTIONS = ['Select', 'English', 'Nepali', 'Spanish', 'German', 'French'];
+const FALLBACK_LANGUAGE_OPTIONS = ['Select', 'English', 'Nepali', 'Spanish', 'German', 'French'];
 const LANGUAGE_LEVEL_OPTIONS = ['Select', 'Basic', 'Conversational', 'Fluent', 'Native / Bilingual'];
 const EMPTY_LANGUAGE_ROW: LanguageRow = { language: 'Select', level: 'Select' };
 
@@ -302,6 +303,14 @@ export default function DashboardProfile() {
   const [latitude, setLatitude] = useState<number | undefined>();
   const [longitude, setLongitude] = useState<number | undefined>();
   const [languages, setLanguages] = useState<LanguageRow[]>([]);
+  const [profileLanguageOptions, setProfileLanguageOptions] = useState(FALLBACK_LANGUAGE_OPTIONS);
+  const languageSelectOptions = useMemo(() => {
+    const base = profileLanguageOptions.filter((option) => option !== 'Select');
+    const saved = languages
+      .map((row) => row.language)
+      .filter((language) => language && language !== 'Select' && !base.includes(language));
+    return ['Select', ...base, ...saved];
+  }, [profileLanguageOptions, languages]);
   const [description, setDescription] = useState('');
   const [transport, setTransport] = useState<string[]>([]);
   const [avatar, setAvatar] = useState<string>(DEFAULT_AVATAR);
@@ -456,6 +465,13 @@ export default function DashboardProfile() {
   useEffect(() => {
     void loadProfileData();
   }, [loadProfileData]);
+
+  useEffect(() => {
+    void loadLanguages('profile').then((langs) => {
+      const names = languageNamesForSelect(langs);
+      if (names.length) setProfileLanguageOptions(['Select', ...names]);
+    });
+  }, []);
 
   useEffect(() => {
     const onProfileUpdated = () => {
@@ -1486,7 +1502,7 @@ export default function DashboardProfile() {
                       className={selectClass}
                       style={SELECT_CHEVRON_STYLE}
                     >
-                      {LANGUAGE_OPTIONS.map((option) => (
+                      {languageSelectOptions.map((option) => (
                         <option key={option} value={option}>
                           {option}
                         </option>

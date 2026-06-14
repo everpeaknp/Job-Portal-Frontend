@@ -11,7 +11,7 @@ import { bidService, extractBidList } from '@/services/bid.service';
 import { tokenManager } from '@/lib/api/client';
 import { Task } from '@/types';
 import { formatNPR } from '@/lib/nepalLocale';
-import { canSubmitOfferOnTask } from '@/lib/taskUtils';
+import { canSubmitOfferOnTask, getListingClosedOfferMessage } from '@/lib/taskUtils';
 import { useAuthStore } from '@/store/auth.store';
 import {
   offerBtnPrimarySm,
@@ -155,7 +155,7 @@ export default function BidForm({ task, onSuccess, onCancel }: BidFormProps) {
       }
 
       if (!canSubmitOfferOnTask(task, user?.id)) {
-        toast.error('You cannot submit an offer on this task.');
+        toast.error(getListingClosedOfferMessage(task.status, 'task'));
         onCancel();
         return;
       }

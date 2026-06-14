@@ -9,6 +9,7 @@ import DashboardStatements from './DashboardStatements';
 import DashboardWallet from './DashboardWallet';
 import DashboardServices from './DashboardServices';
 import DashboardJobs from './DashboardJobs';
+import DashboardTasks from './DashboardTasks';
 import DashboardProjects from './DashboardProjects';
 import DashboardFreelancerProjects from './DashboardFreelancerProjects';
 import DashboardProfile from './DashboardProfile';
@@ -30,6 +31,7 @@ const TAB_LABELS: Record<string, string> = {
   wallet: 'Wallet',
   services: 'Manage Services',
   jobs: 'Manage Jobs',
+  task: 'Manage Tasks',
   project: 'Manage Project',
   profile: 'My Profile',
   settings: 'Settings',
@@ -81,6 +83,10 @@ export default function DashboardTabContent() {
 
   if (activeTab === 'jobs') {
     return <DashboardJobs />;
+  }
+
+  if (activeTab === 'task') {
+    return <DashboardTasks />;
   }
 
   if (activeTab === 'project') {

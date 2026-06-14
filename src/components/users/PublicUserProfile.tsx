@@ -22,6 +22,7 @@ import { userService } from '@/services/user.service';
 import { reviewService } from '@/services/review.service';
 import { taskService } from '@/services/task.service';
 import TaskCard from '@/components/task/TaskCard';
+import { TASK_BROWSE_PATH } from '@/lib/taskBrowsePath';
 import { buildBrowseTaskCardProps } from '@/lib/browseTaskCard';
 import { KATHMANDU_CENTER } from '@/lib/userGeolocation';
 import { getMediaUrl } from '@/lib/utils';
@@ -205,7 +206,7 @@ export default function PublicUserProfile({ slug }: PublicUserProfileProps) {
           <p className="mb-6 text-slate-600">{error}</p>
           <button
             type="button"
-            onClick={() => router.push('/task')}
+            onClick={() => router.push(TASK_BROWSE_PATH)}
             className="inline-flex items-center gap-2 rounded-full bg-brand-emerald px-5 py-2.5 font-semibold text-white"
           >
             <ChevronLeft className="h-4 w-4" />

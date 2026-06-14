@@ -1,4 +1,5 @@
 import type { Task as ApiTask } from '@/types';
+import type { Task as MapBrowseTask } from '@/components/task/types';
 import type { Task as MyTaskView } from '@/components/my-task/types';
 import { getMediaUrl } from '@/lib/utils';
 import { formatTaskLocationShort } from '@/lib/nepalLocale';
@@ -143,4 +144,35 @@ export function transformApiTaskToMyTaskView(
       verified: poster.verified,
     },
   };
+}
+
+/** Map browse markers / preview (same shape as public task map). */
+export function transformMyTasksForMapBrowse(
+  tasks: ApiTask[],
+  userId?: string,
+): MapBrowseTask[] {
+  return tasks
+    .filter(hasValidCoordinates)
+    .map((task, browseOrder) => {
+      const view = transformApiTaskToMyTaskView(task, userId);
+      return {
+        id: view.slug || view.id,
+        slug: view.slug || view.id,
+        title: view.title,
+        status: view.status,
+        location: view.location,
+        coordinates: view.coordinates,
+        price: view.price,
+        category: view.category,
+        workType: view.workType,
+        postedDate: view.postedDate,
+        dueDate: view.dueDate,
+        description: view.description,
+        hasOffers: view.hasOffers,
+        isAssigned: view.isAssigned,
+        statusColor: view.statusColor,
+        user: view.user,
+        browseOrder,
+      };
+    });
 }

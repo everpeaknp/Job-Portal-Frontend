@@ -8,6 +8,10 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { bidService, getMyBidForTask } from '@/services/bid.service';
 import { formatNPR } from '@/lib/nepalLocale';
+import {
+  getListingClosedOfferMessage,
+  isListingOpenForBids,
+} from '@/lib/taskUtils';
 import type { Bid } from '@/types';
 import type { Project } from './projectListData';
 
@@ -41,8 +45,10 @@ export default function ProjectSendProposal({ project, onSubmitted }: ProjectSen
   const isOwner =
     Boolean(user?.id) && Boolean(project.ownerId) && String(user.id) === String(project.ownerId);
 
+  const offersOpen = isListingOpenForBids(project.status);
+
   const loadExistingBid = useCallback(async () => {
-    if (!user || isOwner || !project.id) {
+    if (!user || isOwner || !project.id || !offersOpen) {
       setExistingBid(null);
       return;
     }
@@ -56,7 +62,7 @@ export default function ProjectSendProposal({ project, onSubmitted }: ProjectSen
     } finally {
       setCheckingBid(false);
     }
-  }, [user, isOwner, project.id]);
+  }, [user, isOwner, project.id, offersOpen]);
 
   useEffect(() => {
     void loadExistingBid();
@@ -66,6 +72,11 @@ export default function ProjectSendProposal({ project, onSubmitted }: ProjectSen
     event.preventDefault();
 
     if (existingBid) {
+      return;
+    }
+
+    if (!offersOpen) {
+      toast.error(getListingClosedOfferMessage(project.status, 'project'));
       return;
     }
 
@@ -143,8 +154,22 @@ export default function ProjectSendProposal({ project, onSubmitted }: ProjectSen
           Send Your Proposal
         </h2>
         <p className="text-sm font-normal text-neutral-600">
-          You posted this project. Freelancers submit proposals here — review them in the list above
-          or under Dashboard → My Proposals.
+          {offersOpen
+            ? 'You posted this project. Freelancers submit proposals here — review them in the list above or under Dashboard → My Proposals.'
+            : getListingClosedOfferMessage(project.status, 'project')}
+        </p>
+      </section>
+    );
+  }
+
+  if (!offersOpen) {
+    return (
+      <section className="border-t border-neutral-200 pt-10">
+        <h2 className="mb-4 text-xl font-normal tracking-tight text-black sm:text-2xl">
+          Send Your Proposal
+        </h2>
+        <p className="text-sm font-normal text-neutral-600">
+          {getListingClosedOfferMessage(project.status, 'project')}
         </p>
       </section>
     );

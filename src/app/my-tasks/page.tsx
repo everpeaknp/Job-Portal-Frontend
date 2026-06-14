@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { Menu, SlidersHorizontal } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { SlidersHorizontal } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import Navbar from '@/components/common/navbar';
@@ -10,15 +11,28 @@ import UserAvatar from '@/components/common/UserAvatar';
 import FilterBar from '@/components/my-task/FilterBar';
 import TaskCard from '@/components/my-task/TaskCard';
 import TaskDetails from '@/components/my-task/TaskDetails';
+import TaskMapPreview from '@/components/task/TaskMapPreview';
+import TaskBrowseMobileSheet, {
+  type BrowseSheetSnap,
+} from '@/components/task/TaskBrowseMobileSheet';
+import {
+  TaskAvatarListSkeleton,
+  TaskCardListSkeleton,
+  TaskMapSkeleton,
+} from '@/components/task/TaskBrowseSkeletons';
 import { useSidebar } from '@/hooks/useSidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { taskService } from '@/services/task.service';
 import type { SearchFilters, Task } from '@/types';
-import { filterAndSortTasks, hasActiveFilters } from '@/lib/taskFilters';
-import { getMediaUrl } from '@/lib/utils';
-import TaskBrowseMobileSheet, {
-  type BrowseSheetSnap,
-} from '@/components/task/TaskBrowseMobileSheet';
+import { filterAndSortTasks, hasActiveFilters, taskBudgetAmount } from '@/lib/taskFilters';
+import { confirmDeleteTask } from '@/lib/confirmToast';
+import { formatTaskLocationShort } from '@/lib/nepalLocale';
+import { getStraightDistanceLabel } from '@/hooks/useRoadDistanceLabel';
+import {
+  DEFAULT_TASK_RADIUS_KM,
+  KATHMANDU_CENTER,
+  requestUserGeolocationDetailed,
+} from '@/lib/userGeolocation';
 import {
   type MyTasksFilterId,
   formatMyTaskStatusLabel,
@@ -32,21 +46,16 @@ import {
   canEditMyPostedTask,
   canDeleteMyPostedTask,
 } from '@/lib/taskUtils';
-import { formatTaskLocationShort } from '@/lib/nepalLocale';
-import { confirmDeleteTask } from '@/lib/confirmToast';
 import {
   hasValidCoordinates,
   resolvePoster,
+  toCoord,
   transformApiTaskToMyTaskView,
+  transformMyTasksForMapBrowse,
 } from '@/lib/myTaskDisplay';
-import {
-  TaskAvatarListSkeleton,
-  TaskCardListSkeleton,
-  TaskMapSkeleton,
-} from '@/components/task/TaskBrowseSkeletons';
+import { getDashboardEditHref } from '@/app/dashboard/dashboardTabs';
 
-// Dynamically import MapView to avoid SSR issues with Leaflet
-const MapView = dynamic(() => import('@/components/my-task/MapView'), {
+const MapView = dynamic(() => import('@/components/task/MapView'), {
   ssr: false,
   loading: () => <TaskMapSkeleton />,
 });
@@ -81,22 +90,32 @@ const EMPTY_STATE_BY_FILTER: Partial<
 };
 
 export default function MyTasksPage() {
+  const router = useRouter();
   const { user, isAuthenticated } = useAuth();
 
   const [userTasks, setUserTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null);
+  const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({});
   const [activeStatus, setActiveStatus] = useState<MyTasksFilterId>('all');
   const [isCompactSidebar, setIsCompactSidebar] = useState(false);
   const [sheetSnap, setSheetSnap] = useState<BrowseSheetSnap>('map');
-  const { isSidebarVisible, sidebarWidth, isResizing, setIsResizing, mainRef } = useSidebar();
+  const [userMapCenter, setUserMapCenter] = useState<[number, number]>([
+    KATHMANDU_CENTER.lat,
+    KATHMANDU_CENTER.lng,
+  ]);
 
-  const handleSelectTask = useCallback((taskId: string) => {
-    setSelectedTaskId(taskId);
-    setSheetSnap('map');
-  }, []);
+  const mapCenterInitialized = useRef(false);
+  const {
+    isSidebarVisible,
+    setIsSidebarVisible,
+    sidebarWidth,
+    isResizing,
+    setIsResizing,
+    mainRef,
+  } = useSidebar();
 
   const loadUserTasks = useCallback(async () => {
     setIsLoading(true);
@@ -130,62 +149,191 @@ export default function MyTasksPage() {
     }
   }, [isAuthenticated, user, loadUserTasks]);
 
-  // Show error toast
   useEffect(() => {
     if (error) {
-      toast.error(
-        typeof error === 'string'
-          ? error
-          : 'An unexpected error occurred'
-      );
+      toast.error(typeof error === 'string' ? error : 'An unexpected error occurred');
     }
   }, [error]);
 
+  useEffect(() => {
+    if (mapCenterInitialized.current) return;
+    mapCenterInitialized.current = true;
+
+    void (async () => {
+      const geo = await requestUserGeolocationDetailed();
+      if (geo.success) {
+        setUserMapCenter([geo.lat, geo.lng]);
+        return;
+      }
+
+      const profileLat = user?.latitude != null ? Number(user.latitude) : NaN;
+      const profileLng = user?.longitude != null ? Number(user.longitude) : NaN;
+      if (Number.isFinite(profileLat) && Number.isFinite(profileLng)) {
+        setUserMapCenter([profileLat, profileLng]);
+      }
+    })();
+  }, [user?.latitude, user?.longitude]);
+
   const filterCounts = useMemo(
     () => countMyTasksByFilter(userTasks, user?.id),
-    [userTasks, user?.id]
+    [userTasks, user?.id],
   );
 
   const filteredTasks = useMemo(() => {
-    const involved = userTasks.filter((task) =>
-      isUserInvolvedInMyTask(task, user?.id)
-    );
+    const involved = userTasks.filter((task) => isUserInvolvedInMyTask(task, user?.id));
     const { status: _status, ...filtersWithoutStatus } = searchFilters;
     let filtered = filterAndSortTasks(involved, filtersWithoutStatus);
 
     if (activeStatus !== 'all') {
       filtered = filtered.filter((task) =>
-        matchesMyTasksFilter(task, activeStatus, user?.id)
+        matchesMyTasksFilter(task, activeStatus, user?.id),
       );
     }
 
     return filtered;
   }, [userTasks, searchFilters, activeStatus, user?.id]);
 
-  function transformTaskForMap(task: Task): import('@/components/my-task/types').Task {
-    return transformApiTaskToMyTaskView(task, user?.id);
-  }
+  const mappedTasks = useMemo(
+    () => transformMyTasksForMapBrowse(filteredTasks, user?.id),
+    [filteredTasks, user?.id],
+  );
 
-  const selectedApiTask = useMemo(() => {
-    if (!selectedTaskId) return null;
+  const browseTasksOrderKey = useMemo(
+    () =>
+      `${searchFilters.sort_by ?? 'newest'}|${mappedTasks.map((t) => String(t.id)).join(',')}`,
+    [mappedTasks, searchFilters.sort_by],
+  );
+
+  const detailApiTask = useMemo(() => {
+    if (!detailTaskId) return null;
     return (
       userTasks.find(
-        (t) => String(t.id) === selectedTaskId || t.slug === selectedTaskId
+        (t) => String(t.id) === detailTaskId || t.slug === detailTaskId,
       ) ?? null
     );
-  }, [selectedTaskId, userTasks]);
+  }, [detailTaskId, userTasks]);
 
-  const selectedTask = useMemo(() => {
-    return selectedApiTask ? transformTaskForMap(selectedApiTask) : null;
-  }, [selectedApiTask, user?.id]);
+  const detailTask = useMemo(
+    () => (detailApiTask ? transformApiTaskToMyTaskView(detailApiTask, user?.id) : null),
+    [detailApiTask, user?.id],
+  );
 
-  // Transform tasks for MapView — only those with REAL coordinates.
-  // Tasks without lat/lng stay in the list but are skipped on the map.
-  const transformedTasks = useMemo(() => {
-    return filteredTasks.filter(hasValidCoordinates).map(transformTaskForMap);
-  }, [filteredTasks]);
+  const previewMapTask = useMemo(() => {
+    if (!focusedTaskId || detailTaskId) return null;
+    return (
+      mappedTasks.find(
+        (t) => String(t.id) === String(focusedTaskId) || String(t.slug) === String(focusedTaskId),
+      ) ?? null
+    );
+  }, [focusedTaskId, detailTaskId, mappedTasks]);
 
-  // Convert Task to display format for TaskCard
+  const handleViewTask = useCallback((taskKey: string) => {
+    setFocusedTaskId(taskKey);
+    setDetailTaskId(taskKey);
+    setSheetSnap('map');
+  }, []);
+
+  const handleTaskFocus = useCallback((taskKey: string) => {
+    setFocusedTaskId(taskKey);
+    setDetailTaskId(null);
+    setSheetSnap('map');
+  }, []);
+
+  const handleCloseMapPreview = useCallback(() => {
+    setFocusedTaskId(null);
+  }, []);
+
+  const cardUserCenter = useMemo(
+    (): [number, number] => userMapCenter,
+    [userMapCenter],
+  );
+
+  const getTaskCardProps = useCallback(
+    (task: Task) => {
+      const poster = resolvePoster(task);
+      const rawStatus = task.status || 'open';
+      const coordinates = hasValidCoordinates(task)
+        ? ([toCoord(task.latitude), toCoord(task.longitude)] as [number, number])
+        : null;
+
+      return {
+        title: formatTaskDisplayTitle(task.title || 'Untitled Task'),
+        status: rawStatus,
+        statusLabel: formatMyTaskStatusLabel(rawStatus),
+        location: formatTaskLocationShort(task),
+        coordinates,
+        userCenter: cardUserCenter,
+        distanceLabel: getStraightDistanceLabel(cardUserCenter, coordinates),
+        price: taskBudgetAmount(task),
+        dueDate: task.due_date ?? null,
+        timeLabel: task.flexible_date ? 'Anytime' : 'Anytime',
+        offerCount: getTaskBidCount(task),
+        canEdit: canEditMyPostedTask(task, user?.id),
+        canDelete: canDeleteMyPostedTask(task, user?.id),
+        user: {
+          name: poster.name,
+          avatar: poster.avatar,
+          rating: poster.rating,
+          verified: poster.verified,
+        },
+      };
+    },
+    [cardUserCenter, user?.id],
+  );
+
+  const renderTaskCard = (task: Task, keyPrefix: string) => {
+    const cardProps = getTaskCardProps(task);
+    const taskSlug = task.slug || String(task.id);
+    const taskId = String(task.id);
+    const taskKey = taskSlug || taskId;
+    const isActive = detailTaskId === taskKey || detailTaskId === taskId;
+
+    return (
+      <TaskCard
+        key={`${keyPrefix}-${task.id}`}
+        {...cardProps}
+        id={taskId}
+        slug={taskSlug}
+        isActive={isActive}
+        onClick={() => handleViewTask(taskKey)}
+        onEdit={
+          cardProps.canEdit
+            ? () => {
+                router.push(getDashboardEditHref('task', taskSlug));
+              }
+            : undefined
+        }
+        onDelete={
+          cardProps.canDelete
+            ? async () => {
+                if (!(await confirmDeleteTask())) return;
+                try {
+                  await taskService.deleteTask(taskSlug);
+                  toast.success('Task deleted successfully');
+                  if (detailTaskId === taskKey || detailTaskId === taskId) {
+                    setDetailTaskId(null);
+                    setFocusedTaskId(null);
+                  }
+                  loadUserTasks();
+                } catch (error: unknown) {
+                  const err = error as {
+                    response?: { data?: { detail?: string; error?: string } };
+                    message?: string;
+                  };
+                  const errorMessage =
+                    err?.response?.data?.detail ||
+                    err?.response?.data?.error ||
+                    err?.message ||
+                    'Failed to delete task';
+                  toast.error(errorMessage);
+                }
+              }
+            : undefined
+        }
+      />
+    );
+  };
+
   const renderTaskList = () => {
     if (isLoading) {
       return <TaskCardListSkeleton />;
@@ -193,7 +341,7 @@ export default function MyTasksPage() {
 
     if (filteredTasks.length === 0) {
       return (
-        <div className="flex flex-col items-center px-4 py-10 text-center">
+        <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-surface-dim">
             <SlidersHorizontal className="h-8 w-8 text-on-surface-variant" />
           </div>
@@ -227,110 +375,39 @@ export default function MyTasksPage() {
 
     return (
       <div className="flex flex-col gap-3 pb-2">
-        {filteredTasks.map((task) => {
-          const cardProps = getTaskCardProps(task);
-          const taskSlug = task.slug || String(task.id);
-          const taskId = String(task.id);
-          const isActive = selectedTaskId === taskId;
-
-          return (
-            <TaskCard
-              key={task.id}
-              {...cardProps}
-              id={taskId}
-              slug={taskSlug}
-              isActive={isActive}
-              onClick={() => handleSelectTask(taskId)}
-              onEdit={
-                cardProps.canEdit
-                  ? () => {
-                      window.location.href = `/edit-task/${taskSlug}`;
-                    }
-                  : undefined
-              }
-              onDelete={
-                cardProps.canDelete
-                  ? async () => {
-                      if (!(await confirmDeleteTask())) return;
-                      try {
-                        await taskService.deleteTask(taskSlug);
-                        toast.success('Task deleted successfully');
-                        loadUserTasks();
-                      } catch (error: unknown) {
-                        const err = error as {
-                          response?: { data?: { detail?: string; error?: string } };
-                          message?: string;
-                        };
-                        const errorMessage =
-                          err?.response?.data?.detail ||
-                          err?.response?.data?.error ||
-                          err?.message ||
-                          'Failed to delete task';
-                        toast.error(errorMessage);
-                      }
-                    }
-                  : undefined
-              }
-            />
-          );
-        })}
+        {filteredTasks.map((task) => renderTaskCard(task, 'sidebar'))}
       </div>
     );
   };
 
-  function getTaskCardProps(task: Task) {
-    const poster = resolvePoster(task);
-    const rawStatus = task.status || 'open';
-    const canEdit = canEditMyPostedTask(task, user?.id);
-    const canDelete = canDeleteMyPostedTask(task, user?.id);
-    return {
-      title: formatTaskDisplayTitle(task.title || 'Untitled Task'),
-      status: rawStatus,
-      statusLabel: formatMyTaskStatusLabel(rawStatus),
-      location: formatTaskLocationShort(task),
-      price: task.budget_amount || 0,
-      dueDate: task.due_date ?? null,
-      timeLabel: task.flexible_date ? 'Anytime' : 'Anytime',
-      user: {
-        name: poster.name,
-        avatar: poster.avatar,
-        rating: poster.rating,
-        verified: poster.verified,
-      },
-      offerCount: getTaskBidCount(task),
-      canEdit,
-      canDelete,
-    };
-  }
-
   return (
     <div className="mobile-bottom-nav-offset flex h-screen flex-col bg-surface md:pb-0">
       <Navbar />
-      
-      <main ref={mainRef} className="flex-1 flex overflow-hidden">
-        {/* Sidebar - Task List */}
-        {isSidebarVisible && (
-          <div 
-            className={`hidden lg:flex border-r border-outline-variant bg-white flex-col z-10 shadow-sm relative shrink-0 ${
+
+      <main ref={mainRef} className="flex flex-1 overflow-hidden">
+        {isSidebarVisible ? (
+          <div
+            className={`relative z-10 hidden shrink-0 flex-col border-r border-outline-variant bg-white shadow-sm lg:flex ${
               isCompactSidebar ? 'w-20' : ''
             }`}
             style={{ width: isCompactSidebar ? '80px' : `${sidebarWidth}px` }}
           >
             {isCompactSidebar ? (
-              // Compact view - Only profile pictures
-              <div className="flex-1 overflow-y-auto py-6 scrollbar-thin scrollbar-thumb-outline-variant">
+              <div className="scrollbar-thin scrollbar-thumb-outline-variant flex-1 overflow-y-auto py-6">
                 {isLoading ? (
                   <TaskAvatarListSkeleton />
                 ) : (
-                  <div className="flex flex-col gap-4 items-center">
+                  <div className="flex flex-col items-center gap-4">
                     {filteredTasks.map((task) => {
                       const poster = resolvePoster(task);
-                      const taskId = String(task.id);
-                      const isSelected = selectedTaskId === taskId;
+                      const taskKey = task.slug || String(task.id);
+                      const isSelected =
+                        detailTaskId === taskKey || detailTaskId === String(task.id);
                       return (
                         <button
                           key={task.id}
-                          onClick={() => handleSelectTask(taskId)}
+                          type="button"
+                          onClick={() => handleViewTask(taskKey)}
                           className={`rounded-full border-2 transition-all hover:scale-110 ${
                             isSelected ? 'border-brand-emerald shadow-lg' : 'border-outline-variant'
                           }`}
@@ -350,37 +427,34 @@ export default function MyTasksPage() {
                 )}
               </div>
             ) : (
-              // Full view - Task cards
-              <div className="flex-1 overflow-y-auto px-6 py-6 lg:px-10 scrollbar-thin scrollbar-thumb-outline-variant">
+              <div className="scrollbar-thin scrollbar-thumb-outline-variant flex-1 overflow-y-auto px-10 py-6">
                 {renderTaskList()}
               </div>
             )}
 
-            {/* Resize Handle */}
-            {!isCompactSidebar && (
-              <div 
-                className={`absolute top-0 -right-1.5 w-3 h-full cursor-col-resize z-50 group flex items-center justify-center ${
+            {!isCompactSidebar ? (
+              <div
+                className={`group absolute top-0 -right-1.5 z-50 flex h-full w-3 cursor-col-resize items-center justify-center ${
                   isResizing ? 'bg-brand-emerald/20' : 'hover:bg-brand-emerald/10'
                 }`}
                 onMouseDown={() => setIsResizing(true)}
               >
-                <div className={`w-0.5 h-12 rounded-full bg-outline-variant transition-colors group-hover:bg-brand-emerald ${
-                  isResizing ? 'bg-brand-emerald' : ''
-                }`} />
+                <div
+                  className={`h-12 w-0.5 rounded-full bg-outline-variant transition-colors group-hover:bg-brand-emerald ${
+                    isResizing ? 'bg-brand-emerald' : ''
+                  }`}
+                />
               </div>
-            )}
+            ) : null}
           </div>
-        )}
+        ) : null}
 
-        {/* Right Area - Filters + Map */}
-        <div className="flex flex-1 flex-col relative min-w-0 min-h-0 z-0">
+        <div className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col">
           <FilterBar
             currentFilters={searchFilters}
-            onFilterChange={(next) =>
-              setSearchFilters({ ...next, status: undefined })
-            }
+            onFilterChange={(next) => setSearchFilters({ ...next, status: undefined })}
             isSidebarVisible={isSidebarVisible}
-            onToggleSidebar={() => {}}
+            onToggleSidebar={() => setIsSidebarVisible(!isSidebarVisible)}
             isCompactSidebar={isCompactSidebar}
             onToggleCompact={() => setIsCompactSidebar(!isCompactSidebar)}
             statusTabs={{
@@ -392,54 +466,81 @@ export default function MyTasksPage() {
 
           <div className="relative min-h-0 flex-1 overflow-hidden bg-surface-dim">
             <div className="absolute inset-0">
-              <MapView tasks={transformedTasks} onTaskSelect={handleSelectTask} />
+              <MapView
+                tasks={mappedTasks}
+                tasksOrderKey={browseTasksOrderKey}
+                sortBy={searchFilters.sort_by ?? 'newest'}
+                focusTaskId={focusedTaskId}
+                onTaskFocus={(id) => handleTaskFocus(String(id))}
+                userCenter={userMapCenter}
+                radiusKm={DEFAULT_TASK_RADIUS_KM}
+                onUserLocationFound={(lat, lng) => setUserMapCenter([lat, lng])}
+              />
             </div>
+
+            {previewMapTask ? (
+              <TaskMapPreview
+                task={previewMapTask}
+                userCenter={userMapCenter}
+                onClose={handleCloseMapPreview}
+                onViewTask={() =>
+                  handleViewTask(String(previewMapTask.slug || previewMapTask.id))
+                }
+              />
+            ) : null}
 
             <TaskBrowseMobileSheet
               snap={sheetSnap}
               onSnapChange={setSheetSnap}
               taskCount={filteredTasks.length}
-              hidden={Boolean(selectedTask)}
+              hidden={Boolean(detailTask)}
             >
-              {renderTaskList()}
+              {isLoading ? (
+                <TaskCardListSkeleton count={4} />
+              ) : filteredTasks.length > 0 ? (
+                <div className="flex flex-col gap-3 pb-2">
+                  {filteredTasks.map((task) => renderTaskCard(task, 'mobile'))}
+                </div>
+              ) : (
+                renderTaskList()
+              )}
             </TaskBrowseMobileSheet>
 
-            {/* Friendly empty state when NO filtered task has coords.
-                Hide it when a task is selected so it doesn't look like a task-level error. */}
-            {!isLoading && !selectedTask && filteredTasks.length > 0 && transformedTasks.length === 0 && (
+            {!isLoading && !detailTask && filteredTasks.length > 0 && mappedTasks.length === 0 ? (
               <div
-                className={`absolute inset-0 z-[25] flex items-center justify-center p-6 pb-32 pointer-events-none lg:pb-6 ${
+                className={`pointer-events-none absolute inset-0 z-[25] flex items-center justify-center p-6 pb-32 lg:pb-6 ${
                   sheetSnap === 'list' ? 'hidden lg:flex' : 'flex'
                 }`}
               >
                 <div className="pointer-events-auto max-w-sm rounded-2xl border border-outline-variant bg-white/95 px-6 py-5 text-center shadow-lg backdrop-blur">
-                  <h3 className="text-base font-bold text-on-surface mb-1">
-                    Map pins unavailable
-                  </h3>
+                  <h3 className="mb-1 text-base font-bold text-on-surface">Map pins unavailable</h3>
                   <p className="text-sm text-on-surface-variant">
-                    These tasks don&apos;t have saved coordinates (latitude/longitude) yet.
-                    You can still open a task and use <span className="font-semibold">View map</span> to search by address.
+                    These tasks don&apos;t have saved coordinates yet. Open a task from the list to
+                    view details.
                   </p>
                 </div>
               </div>
-            )}
+            ) : null}
 
-            {/* Task Details Overlay */}
             <AnimatePresence mode="wait">
-              {selectedTask && (
+              {detailTask ? (
                 <TaskDetails
-                  task={selectedTask}
-                  apiTask={selectedApiTask ?? undefined}
-                  onClose={() => setSelectedTaskId(null)}
+                  task={detailTask}
+                  apiTask={detailApiTask ?? undefined}
+                  onClose={() => {
+                    setDetailTaskId(null);
+                    setFocusedTaskId(null);
+                  }}
                   onTaskDeleted={() => {
-                    // Refresh the task list after deletion
+                    setDetailTaskId(null);
+                    setFocusedTaskId(null);
                     loadUserTasks();
                   }}
                   onTaskUpdated={() => {
                     loadUserTasks();
                   }}
                 />
-              )}
+              ) : null}
             </AnimatePresence>
           </div>
         </div>
@@ -447,4 +548,3 @@ export default function MyTasksPage() {
     </div>
   );
 }
-

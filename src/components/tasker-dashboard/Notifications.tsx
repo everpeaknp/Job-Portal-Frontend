@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { TASK_BROWSE_PATH } from '@/lib/taskBrowsePath';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
@@ -453,7 +454,7 @@ export default function Notifications() {
             </button>
           ) : (
             <Link
-              href="/task"
+              href={TASK_BROWSE_PATH}
               className={cn(
                 landingBody,
                 'mt-6 inline-flex items-center gap-2 rounded-full bg-brand-emerald px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90',

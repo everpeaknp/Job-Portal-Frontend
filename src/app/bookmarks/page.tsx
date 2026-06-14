@@ -28,6 +28,7 @@ import {
   landingHeadlineSm,
   landingBodyMuted,
 } from '@/components/LangingHome/landingTypography';
+import { TASK_BROWSE_PATH } from '@/lib/taskBrowsePath';
 import { buildBrowseTaskCardProps } from '@/lib/browseTaskCard';
 import { haversineKm, taskBudgetAmount, taskCreatedAtMs } from '@/lib/taskFilters';
 import { extractTaskList } from '@/lib/taskUtils';
@@ -271,7 +272,7 @@ export default function BookmarksPage() {
               here.
             </p>
             <Link
-              href="/task"
+              href={TASK_BROWSE_PATH}
               className="mt-8 inline-flex min-h-11 items-center gap-2 rounded-full bg-[#005fff] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0047ff]"
             >
               Explore tasks

@@ -14,6 +14,10 @@ export default function FreelancerSkills({ freelancer, skills }: FreelancerSkill
     [freelancer, skills],
   );
 
+  if (skills !== undefined && skillItems.length === 0) {
+    return null;
+  }
+
   return (
     <div className="mt-10 w-full">
       <h3 className="mb-5 text-lg font-normal leading-tight tracking-tight text-black sm:text-xl">

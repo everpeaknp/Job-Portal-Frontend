@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTaskerDashboardNavOptional } from '@/context/TaskerDashboardNavContext';
 import { useAuth } from '@/hooks/useAuth';
+import { TASK_BROWSE_PATH, TASK_MAP_PATH } from '@/lib/taskBrowsePath';
 import { cn } from '@/lib/utils';
 import { notificationService, taskService, chatService } from '@/services';
 import UserAvatar from '@/components/common/UserAvatar';
@@ -344,7 +345,7 @@ export default function Navbar() {
   };
 
   const handleBrowseTasksClick = () => {
-    router.push('/task');
+    router.push(TASK_BROWSE_PATH);
   };
 
   const handleMyTasksClick = () => {
@@ -361,7 +362,8 @@ export default function Navbar() {
   const isServicesActive =
     pathname === '/services' || pathname.startsWith('/services/');
   const isBrowseTasksActive =
-    pathname === '/task' ||
+    pathname === TASK_BROWSE_PATH ||
+    pathname === TASK_MAP_PATH ||
     (pathname.startsWith('/task/') && !pathname.startsWith('/tasker-dashboard'));
   const isMyTasksActive =
     pathname === '/my-tasks' || pathname.startsWith('/my-tasks/');

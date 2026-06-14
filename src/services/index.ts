@@ -14,6 +14,7 @@ export { notificationService } from './notification.service';
 export { reviewService } from './review.service';
 export { chatService } from './chat.service';
 export { categoryService } from './category.service';
+export { skillService } from './skill.service';
 export { searchService } from './search.service';
 export { blogService } from './blog.service';
 export { faqService } from './faq.service';

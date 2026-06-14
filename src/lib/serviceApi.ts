@@ -59,7 +59,17 @@ function resolveOwnerName(task: Task): string {
 
 }
 
-
+function resolveOwnerUsername(task: Task): string | undefined {
+  if (task.owner_username?.trim()) {
+    return task.owner_username.trim().toLowerCase();
+  }
+  const owner = task.owner;
+  if (owner && typeof owner === 'object') {
+    const username = (owner as User).username?.trim();
+    if (username) return username.toLowerCase();
+  }
+  return undefined;
+}
 
 function resolveOwnerImage(task: Task): string {
 
@@ -428,6 +438,8 @@ export function mapTaskToPublicService(task: Task): Service {
       avatar: resolveOwnerImage(task),
 
       online: true,
+
+      username: resolveOwnerUsername(task),
 
       role: resolveCategoryName(task),
 

@@ -9,7 +9,9 @@ export function buildTaskApiParams(
   categories: Category[] = []
 ): Record<string, string | number> {
   const f = filters ?? {};
-  const params: Record<string, string | number> = {};
+  const params: Record<string, string | number> = {
+    listing_kind: 'task',
+  };
 
   if (f.query?.trim()) {
     params.search = f.query.trim();

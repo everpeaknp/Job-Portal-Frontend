@@ -12,6 +12,7 @@ import {
   type SearchTaskResult,
   type SearchTaskerResult,
 } from '@/services/search.service';
+import { TASK_BROWSE_PATH } from '@/lib/taskBrowsePath';
 import { formatNPR } from '@/lib/nepalLocale';
 import { formatTaskDisplayTitle } from '@/lib/taskUtils';
 
@@ -109,7 +110,7 @@ function SearchResultsContent() {
           <div className="flex flex-col items-center justify-center rounded-2xl bg-white py-16 text-center">
             <Search className="mb-3 h-10 w-10 text-gray-300" />
             <p className="text-gray-600">Use the search bar to find tasks and taskers.</p>
-            <Link href="/task" className="mt-4 text-sm font-semibold text-[#005fff] hover:underline">
+            <Link href={TASK_BROWSE_PATH} className="mt-4 text-sm font-semibold text-[#005fff] hover:underline">
               Browse all tasks
             </Link>
           </div>

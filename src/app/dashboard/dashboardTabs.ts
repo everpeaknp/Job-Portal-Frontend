@@ -9,6 +9,7 @@ export const DASHBOARD_TABS = [
   'services',
   'jobs',
   'project',
+  'task',
   'profile',
   'settings',
 ] as const;
@@ -53,6 +54,7 @@ export const DASHBOARD_CREATE_SLUGS = {
   services: 'addservices',
   jobs: 'postnewjob',
   project: 'postnewproject',
+  task: 'postnewtask',
 } as const;
 
 export type DashboardCreateTab = keyof typeof DASHBOARD_CREATE_SLUGS;
@@ -81,6 +83,7 @@ export const EMPLOYER_NAV_TABS: DashboardTab[] = [
   'dashboard',
   'proposals',
   'message',
+  'task',
   'jobs',
   'project',
   'statements',
@@ -95,6 +98,7 @@ export const FREELANCER_NAV_TABS: DashboardTab[] = [
   'dashboard',
   'proposals',
   'message',
+  'task',
   'services',
   'project',
   'statements',

@@ -616,6 +616,8 @@ interface DashboardCreateServiceProps {
   initialData?: Partial<CreateServiceFormData>;
   initialGalleryUrls?: string[];
   categoryOptions?: string[];
+  skillOptions?: string[];
+  languageOptions?: string[];
   mode?: 'create' | 'edit';
 }
 
@@ -642,6 +644,8 @@ export default function DashboardCreateService({
   initialData,
   initialGalleryUrls = [],
   categoryOptions = [],
+  skillOptions = [],
+  languageOptions = [],
   mode = 'create',
 }: DashboardCreateServiceProps) {
   const isEdit = mode === 'edit';
@@ -662,6 +666,8 @@ export default function DashboardCreateService({
     form.category && !baseCategoryOptions.includes(form.category)
       ? [form.category, ...baseCategoryOptions]
       : baseCategoryOptions;
+  const skillChoices = skillOptions.length > 0 ? skillOptions : SKILLS;
+  const languageChoices = languageOptions.length > 0 ? languageOptions : LANGUAGES;
 
   const toggleSection = (id: string) => {
     setOpenSection((prev) => (prev === id ? null : id));
@@ -782,7 +788,7 @@ export default function DashboardCreateService({
               value={form.languages}
               onChange={(languages) => update({ languages })}
               placeholder="Select languages"
-              options={LANGUAGES}
+              options={languageChoices}
             />
             <SelectField
               label="Response Time"
@@ -803,7 +809,7 @@ export default function DashboardCreateService({
             value={form.skills}
             onChange={(skills) => update({ skills })}
             placeholder="Nothing selected"
-            options={SKILLS}
+            options={skillChoices}
           />
         </FormAccordionSection>
 

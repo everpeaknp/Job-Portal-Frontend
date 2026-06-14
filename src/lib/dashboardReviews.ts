@@ -1,7 +1,12 @@
 import { formatReviewTimeAgo, reviewerDisplayName } from '@/lib/publicProfile';
+import { employerService } from '@/services/employer.service';
+import { freelancerService } from '@/services/freelancer.service';
+import { reviewService } from '@/services/review.service';
 import type { Review } from '@/types';
 
-export type ReviewsSubTab = 'services' | 'project' | 'jobs';
+export type ReviewsSubTab = 'services' | 'project' | 'jobs' | 'profile';
+
+export type DashboardSidebarRole = 'customer' | 'tasker';
 
 export interface DashboardReviewItem {
   id: string;
@@ -9,6 +14,8 @@ export interface DashboardReviewItem {
   taskTitle?: string;
   authorName: string;
   authorInitials: string;
+  authorAvatar?: string;
+  authorVerified?: boolean;
   avatarBg: string;
   rating: number;
   timeAgo: string;
@@ -16,6 +23,18 @@ export interface DashboardReviewItem {
   response?: string;
   canRespond: boolean;
 }
+
+export const REVIEWS_TABS_BY_ROLE: Record<DashboardSidebarRole, ReviewsSubTab[]> = {
+  tasker: ['profile', 'services'],
+  customer: ['profile', 'project', 'jobs'],
+};
+
+export const REVIEWS_TAB_LABELS: Record<ReviewsSubTab, string> = {
+  services: 'Services',
+  project: 'Project',
+  jobs: 'Jobs',
+  profile: 'Profile',
+};
 
 const AVATAR_BACKGROUNDS = [
   'bg-[#183B32]',
@@ -56,10 +75,26 @@ function initialsFromReviewer(reviewer: Review['reviewer']): string {
   return 'U';
 }
 
+export function reviewTabForListingKind(listingKind?: string | null): ReviewsSubTab {
+  if (listingKind === 'service') return 'services';
+  if (listingKind === 'project') return 'project';
+  if (listingKind === 'job') return 'jobs';
+  return 'profile';
+}
+
+/** @deprecated Use reviewTabForListingKind */
 export function reviewTabForBudget(budgetType?: string | null): ReviewsSubTab {
   if (budgetType === 'hourly') return 'services';
   if (budgetType === 'fixed') return 'project';
   return 'jobs';
+}
+
+export function defaultReviewsTabForRole(role: DashboardSidebarRole): ReviewsSubTab {
+  return REVIEWS_TABS_BY_ROLE[role][0];
+}
+
+export function isReviewsTabAllowedForRole(tab: ReviewsSubTab, role: DashboardSidebarRole): boolean {
+  return REVIEWS_TABS_BY_ROLE[role].includes(tab);
 }
 
 export function mapReviewToDashboardItem(review: Review): DashboardReviewItem {
@@ -68,13 +103,16 @@ export function mapReviewToDashboardItem(review: Review): DashboardReviewItem {
   const timeAgo = relative
     ? `Published ${relative.replace(/^about\s+/i, '')}`
     : 'Published recently';
+  const listingKind = review.task_listing_kind ?? null;
 
   return {
     id: String(review.id),
-    tab: reviewTabForBudget(review.task_budget_type),
+    tab: reviewTabForListingKind(listingKind),
     taskTitle: review.task_title,
     authorName,
     authorInitials: initialsFromReviewer(review.reviewer),
+    authorAvatar: review.reviewer?.profile_image || undefined,
+    authorVerified: Boolean(review.reviewer?.is_verified_tasker),
     avatarBg: avatarBgForId(String(review.id)),
     rating: Number(review.rating) || 0,
     timeAgo,
@@ -92,8 +130,65 @@ export function filterReviewsByTab(
   items: DashboardReviewItem[],
   tab: ReviewsSubTab,
 ): DashboardReviewItem[] {
-  if (tab === 'jobs') {
+  if (tab === 'profile') {
     return items;
   }
   return items.filter((item) => item.tab === tab);
+}
+
+/**
+ * Same reviews as the public /freelancers/{slug} or /employers/{slug} profile pages.
+ */
+export async function fetchPublicProfileReviews(
+  role: DashboardSidebarRole,
+  slug: string,
+): Promise<Review[]> {
+  const normalizedSlug = slug.trim().toLowerCase();
+  if (!normalizedSlug) {
+    return [];
+  }
+
+  if (role === 'tasker') {
+    const response = await freelancerService.getFreelancerReviews(normalizedSlug);
+    if (!response.success || !response.data?.results) {
+      return [];
+    }
+    return response.data.results as Review[];
+  }
+
+  const response = await employerService.getEmployerReviews(normalizedSlug);
+  if (!response.success || !response.data?.results) {
+    return [];
+  }
+  return response.data.results as Review[];
+}
+
+export async function fetchDashboardReviews(
+  role: DashboardSidebarRole,
+  slug?: string | null,
+): Promise<Review[]> {
+  if (slug?.trim()) {
+    return fetchPublicProfileReviews(role, slug);
+  }
+
+  const response = await reviewService.getReceivedReviews();
+  if (!response.success || !Array.isArray(response.data)) {
+    return [];
+  }
+  return response.data;
+}
+
+export function emptyReviewsMessage(tab: ReviewsSubTab, role: DashboardSidebarRole): string {
+  if (tab === 'profile') {
+    return role === 'tasker'
+      ? 'No reviews on your public freelancer profile yet.'
+      : 'No reviews on your public employer profile yet.';
+  }
+  if (tab === 'services') {
+    return 'No service reviews yet. Completed service work with public feedback appears here.';
+  }
+  if (tab === 'project') {
+    return 'No project reviews yet. Completed projects with public feedback appear here.';
+  }
+  return 'No job reviews yet. Completed jobs with public feedback appear here.';
 }

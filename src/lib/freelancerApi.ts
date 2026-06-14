@@ -5,6 +5,7 @@ import {
 import { extractReviewList } from '@/lib/publicProfile';
 import type { PortfolioItem } from '@/types';
 import type { PublicProfileReview } from '@/types/publicProfile';
+import { employerService } from '@/services/employer.service';
 import { freelancerService } from '@/services/freelancer.service';
 
 function emptyPortfolio(): PortfolioItem[] {
@@ -55,4 +56,18 @@ export async function loadFreelancerPageData(
   } catch {
     return null;
   }
+}
+
+/** If slug belongs to an employer account, return the employer profile path. */
+export async function resolveEmployerRedirectForSlug(slug: string): Promise<string | null> {
+  const normalizedSlug = slug.trim().toLowerCase();
+  if (!normalizedSlug) return null;
+
+  const response = await employerService.getEmployerBySlug(normalizedSlug);
+  if (!response.success || !response.data) {
+    return null;
+  }
+
+  const employerSlug = response.data.slug?.trim().toLowerCase() || normalizedSlug;
+  return `/employers/${encodeURIComponent(employerSlug)}`;
 }

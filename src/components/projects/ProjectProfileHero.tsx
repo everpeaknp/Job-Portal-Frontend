@@ -1,7 +1,11 @@
 'use client';
 
+import Link from 'next/link';
 import { motion } from 'motion/react';
 import { Calendar, Eye, MapPin } from 'lucide-react';
+import EmployerAvatarCircle from '@/components/employers/EmployerAvatarCircle';
+import { resolveEmployerProfileHref } from '@/components/employers/employerSlug';
+import JobCompanyLogo from '@/components/jobs/JobCompanyLogo';
 import { getProjectMeta, type Project } from './projectListData';
 
 const HERO_ILLUSTRATION =
@@ -13,6 +17,27 @@ interface ProjectProfileHeroProps {
 
 export default function ProjectProfileHero({ project }: ProjectProfileHeroProps) {
   const meta = getProjectMeta(project);
+  const employerHref = resolveEmployerProfileHref({
+    employerSlug: project.employerSlug,
+    companyName: project.companyName,
+    allowDemoLookup: !project.slug,
+  });
+
+  const employerAvatar = (
+    <div className="relative shrink-0">
+      <EmployerAvatarCircle
+        name={project.employerLogoText || project.companyName}
+        avatarUrl={project.ownerAvatarUrl}
+        avatarBg={project.companyLogoBg}
+        verified={project.verified}
+        sizeClass="h-14 w-14 sm:h-16 sm:w-16"
+        textClass="text-base font-semibold sm:text-lg"
+        useDemoIcon={!project.slug}
+        iconType={project.companyIconType}
+        renderIcon={(type, className) => <JobCompanyLogo type={type} className={className} />}
+      />
+    </div>
+  );
 
   return (
     <div className="relative flex min-h-[150px] w-full items-stretch overflow-hidden rounded-[20px] border border-neutral-200/20 bg-[#fbf2ed] shadow-sm sm:min-h-[165px] md:min-h-[175px] lg:min-h-[190px]">
@@ -34,8 +59,20 @@ export default function ProjectProfileHero({ project }: ProjectProfileHeroProps)
         </svg>
       </div>
 
-      <div className="relative z-10 grid w-full grid-cols-1 items-center gap-4 px-8 py-5 sm:px-12 md:px-16 lg:grid-cols-12 lg:gap-4 lg:px-20 lg:py-6">
-        <div className="flex flex-col justify-center lg:col-span-7 lg:pr-4">
+      <div className="relative z-10 flex w-full items-center gap-4 px-8 py-5 sm:px-12 md:px-16 lg:gap-5 lg:px-20 lg:py-6">
+        {employerHref ? (
+          <Link
+            href={employerHref}
+            className="shrink-0 transition-opacity hover:opacity-80"
+            title={project.companyName}
+          >
+            {employerAvatar}
+          </Link>
+        ) : (
+          employerAvatar
+        )}
+
+        <div className="min-w-0 flex-1 pr-[min(38%,260px)] lg:pr-[min(42%,280px)]">
           <motion.h1
             className="max-w-2xl text-2xl font-normal leading-tight tracking-tight text-black sm:text-3xl md:text-[34px]"
             initial={{ opacity: 0, y: -10 }}
@@ -44,6 +81,17 @@ export default function ProjectProfileHero({ project }: ProjectProfileHeroProps)
           >
             {project.title}
           </motion.h1>
+
+          {employerHref ? (
+            <Link
+              href={employerHref}
+              className="mt-1 inline-block text-sm font-normal text-[#45a874] transition-opacity hover:opacity-80 hover:underline"
+            >
+              {project.companyName}
+            </Link>
+          ) : (
+            <p className="mt-1 text-sm font-normal text-[#45a874]">{project.companyName}</p>
+          )}
 
           <motion.div
             className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-normal text-black sm:gap-x-6"
@@ -65,7 +113,6 @@ export default function ProjectProfileHero({ project }: ProjectProfileHeroProps)
             </span>
           </motion.div>
         </div>
-
       </div>
 
       <motion.img

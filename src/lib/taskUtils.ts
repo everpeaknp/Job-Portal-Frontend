@@ -1,5 +1,5 @@
 import { TOP_CATEGORIES } from '@/components/constants';
-import { Category, Task, PaginatedResponse, User, TaskQuestion, Bid } from '@/types';
+import type { Category, Task, PaginatedResponse, User, TaskQuestion, Bid } from '@/types';
 
 /** Status tabs on /my-tasks — matches API `task.status` (except `all`). */
 export type MyTasksFilterId =
@@ -94,6 +94,67 @@ export function flattenCategoriesForSelect(
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+function categoryFromDashboardMeta(task: Task): string {
+  type MetaShape = {
+    category?: string;
+    projectForm?: { category?: string };
+  };
+
+  const jobMeta = (task as Task & { job_meta?: MetaShape }).job_meta;
+  if (jobMeta?.category?.trim()) return jobMeta.category.trim();
+  if (jobMeta?.projectForm?.category?.trim()) return jobMeta.projectForm.category.trim();
+
+  if (task.project_meta && typeof task.project_meta === 'object') {
+    const meta = task.project_meta as MetaShape;
+    if (meta.category?.trim()) return meta.category.trim();
+    if (meta.projectForm?.category?.trim()) return meta.projectForm.category.trim();
+  }
+
+  if (task.service_meta && typeof task.service_meta === 'object') {
+    const meta = task.service_meta as MetaShape;
+    if (meta.category?.trim()) return meta.category.trim();
+  }
+
+  const entry = task.requirements?.find((item) => item?.type === 'dashboard_meta');
+  if (!entry?.value) return '';
+  try {
+    const meta = JSON.parse(entry.value) as MetaShape;
+    return meta.category?.trim() || meta.projectForm?.category?.trim() || '';
+  } catch {
+    return '';
+  }
+}
+
+/** Resolve display category from list/detail task payloads (never returns "General"). */
+export function resolveTaskCategoryName(
+  task: Task,
+  categories?: Category[],
+): string {
+  if (task.category_name?.trim()) return task.category_name.trim();
+
+  const cat = task.category;
+  if (cat && typeof cat === 'object') {
+    const name = (cat as { name?: string }).name;
+    if (name?.trim()) return name.trim();
+  }
+
+  if (typeof cat === 'string' && cat.trim()) {
+    const raw = cat.trim();
+    if (categories?.length) {
+      const flat = flattenCategoriesForSelect(categories);
+      const byId = flat.find((item) => item.id === raw);
+      if (byId?.name?.trim()) return byId.name.trim();
+    }
+    const looksLikeUuid = /^[0-9a-f-]{36}$/i.test(raw);
+    if (!looksLikeUuid) return raw;
+  }
+
+  const metaCategory = categoryFromDashboardMeta(task);
+  if (metaCategory) return metaCategory;
+
+  return '';
+}
+
 /** Flat, sorted category names for filter pickers (includes subcategories). */
 export function categoryFilterLabels(categories: Category[]): string[] {
   const names: string[] = [];
@@ -139,10 +200,34 @@ export function isCurrentUserTaskOwner(task: Task, userId: string | undefined): 
   return ownerId !== undefined && ownerId === String(userId);
 }
 
+export function isListingOpenForBids(
+  status?: string | null,
+  isOpen?: boolean | null,
+): boolean {
+  if ((status || '').toLowerCase() !== 'open') return false;
+  if (isOpen === false) return false;
+  return true;
+}
+
+export function getListingClosedOfferMessage(
+  status?: string | null,
+  listingKind: 'task' | 'project' = 'task',
+): string {
+  const normalized = (status || '').toLowerCase();
+  const noun = listingKind === 'project' ? 'project' : 'task';
+  if (normalized === 'completed') {
+    return `This ${noun} is completed and no longer accepting ${listingKind === 'project' ? 'proposals' : 'offers'}.`;
+  }
+  if (normalized === 'cancelled') {
+    return `This ${noun} was cancelled and is no longer accepting ${listingKind === 'project' ? 'proposals' : 'offers'}.`;
+  }
+  return `This ${noun} is not accepting ${listingKind === 'project' ? 'proposals' : 'offers'} right now.`;
+}
+
 export function canSubmitOfferOnTask(task: Task, userId: string | undefined): boolean {
   if (!userId) return false;
   if (isCurrentUserTaskOwner(task, userId)) return false;
-  return task.status === 'open' && task.is_open !== false;
+  return isListingOpenForBids(task.status, task.is_open);
 }
 
 /** Assigned tasker id from list (UUID string) or detail (nested user) serializers */

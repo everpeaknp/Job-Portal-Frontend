@@ -2,6 +2,7 @@
 
 import { motion } from 'motion/react';
 import { Star, MapPin, Calendar } from 'lucide-react';
+import UserAvatar from '@/components/common/UserAvatar';
 import { formatFreelancerRating } from '@/lib/freelancerProfileFromApi';
 import type { Freelancer } from './freelancerData';
 
@@ -54,14 +55,16 @@ export default function FreelancerProfileHero({ freelancer }: FreelancerProfileH
       </div>
 
       <div className="relative z-10 flex w-full flex-col justify-center px-10 py-10 text-left sm:px-20 md:px-24 lg:px-32">
-        <motion.h1
-          className="mb-6 max-w-4xl text-xl font-normal leading-tight tracking-tight text-black sm:text-2xl md:text-3xl lg:text-4xl"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          {freelancer.headline}
-        </motion.h1>
+          {freelancer.headline ? (
+            <motion.h1
+              className="mb-6 max-w-4xl text-xl font-normal leading-tight tracking-tight text-black sm:text-2xl md:text-3xl lg:text-4xl"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              {freelancer.headline}
+            </motion.h1>
+          ) : null}
 
         <motion.div
           className="flex items-center gap-4 sm:gap-5"
@@ -73,11 +76,11 @@ export default function FreelancerProfileHero({ freelancer }: FreelancerProfileH
             <div
               className={`flex h-[68px] w-[68px] items-center justify-center overflow-hidden rounded-full border-2 p-1 shadow-sm sm:h-[76px] sm:w-[76px] ${ringParts.join(' ')}`}
             >
-              <img
-                src={freelancer.avatar}
-                alt={freelancer.name}
-                className="h-full w-full rounded-full bg-neutral-100 object-cover"
-                referrerPolicy="no-referrer"
+              <UserAvatar
+                src={freelancer.avatar || undefined}
+                name={freelancer.name}
+                size="lg"
+                className="h-full w-full"
               />
             </div>
             {freelancer.availableNow ? (
@@ -89,26 +92,34 @@ export default function FreelancerProfileHero({ freelancer }: FreelancerProfileH
             <h2 className="text-sm font-normal leading-tight tracking-tight text-black sm:text-base md:text-lg">
               {freelancer.name}
             </h2>
-            <p className="mt-0.5 text-xs font-normal text-black sm:text-sm">{freelancer.role}</p>
+            {freelancer.role ? (
+              <p className="mt-0.5 text-xs font-normal text-black sm:text-sm">{freelancer.role}</p>
+            ) : null}
 
             <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] font-normal leading-none text-black sm:gap-x-6 sm:text-xs">
-              <div className="flex select-none items-center gap-1">
-                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 stroke-[1.5]" />
-                <span className="font-normal text-black">
-                  {formatFreelancerRating(freelancer.rating, freelancer.reviews)}
-                </span>
-                <span className="font-normal text-black">({freelancer.reviews} reviews)</span>
-              </div>
+              {freelancer.reviews > 0 || freelancer.rating > 0 ? (
+                <div className="flex select-none items-center gap-1">
+                  <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 stroke-[1.5]" />
+                  <span className="font-normal text-black">
+                    {formatFreelancerRating(freelancer.rating, freelancer.reviews)}
+                  </span>
+                  <span className="font-normal text-black">({freelancer.reviews} reviews)</span>
+                </div>
+              ) : null}
 
-              <div className="flex items-center gap-1 text-black">
-                <MapPin className="h-3.5 w-3.5 stroke-[2.2] text-neutral-400" />
-                <span className="font-normal text-black">{freelancer.location}</span>
-              </div>
+              {freelancer.location ? (
+                <div className="flex items-center gap-1 text-black">
+                  <MapPin className="h-3.5 w-3.5 stroke-[2.2] text-neutral-400" />
+                  <span className="font-normal text-black">{freelancer.location}</span>
+                </div>
+              ) : null}
 
-              <div className="flex items-center gap-1 text-black">
-                <Calendar className="h-3.5 w-3.5 stroke-[2.2] text-neutral-400" />
-                <span className="font-normal text-black">{freelancer.memberSince}</span>
-              </div>
+              {freelancer.memberSince !== 'Member since —' ? (
+                <div className="flex items-center gap-1 text-black">
+                  <Calendar className="h-3.5 w-3.5 stroke-[2.2] text-neutral-400" />
+                  <span className="font-normal text-black">{freelancer.memberSince}</span>
+                </div>
+              ) : null}
             </div>
           </div>
         </motion.div>

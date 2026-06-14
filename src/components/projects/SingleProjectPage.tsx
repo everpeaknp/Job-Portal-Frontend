@@ -13,6 +13,7 @@ import ProjectProposals from './ProjectProposals';
 import ProjectSendProposal from './ProjectSendProposal';
 import ProjectQuestions from './ProjectQuestions';
 import ProjectShareSaveActions from './ProjectShareSaveActions';
+import TaskStatusTimeline from '@/components/common/TaskStatusTimeline';
 import type { Project } from './projectListData';
 
 export const SEND_PROPOSAL_SECTION_ID = 'send-your-proposal';
@@ -54,7 +55,8 @@ export default function SingleProjectPage({
   return (
     <div className="select-none bg-white pb-12 pt-8 font-normal text-black antialiased [&_h1]:font-normal [&_h2]:font-normal [&_h3]:font-normal [&_p]:font-normal [&_span]:font-normal [&_button]:font-normal [&_label]:font-normal">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-5 flex justify-end">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <TaskStatusTimeline status={project.status || 'open'} />
           <ProjectShareSaveActions project={project} />
         </div>
 

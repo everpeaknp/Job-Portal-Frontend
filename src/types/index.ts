@@ -178,6 +178,42 @@ export interface UserDocument {
   verified_at?: string | null;
 }
 
+export type UserKYCStatus =
+  | 'not_started'
+  | 'pending'
+  | 'under_review'
+  | 'approved'
+  | 'rejected';
+
+export interface UserKYC {
+  id: string;
+  pan_number?: string;
+  status: UserKYCStatus;
+  status_display?: string;
+  rejection_reason?: string;
+  submitted_at?: string | null;
+  reviewed_at?: string | null;
+  documents?: UserDocument[];
+}
+
+export interface MarketplaceSkill {
+  id: string;
+  name: string;
+  slug: string;
+  listing_kind: 'task' | 'job' | 'project' | 'service';
+  description?: string;
+  is_active?: boolean;
+  order?: number;
+}
+
+export interface MarketplaceLanguage {
+  id: string;
+  name: string;
+  slug: string;
+  is_active?: boolean;
+  order?: number;
+}
+
 export type PortfolioDocumentStatus = 'pending' | 'approved' | 'rejected';
 
 export interface PortfolioItem {
@@ -499,6 +535,7 @@ export interface Review {
   task: string;
   task_title?: string;
   task_budget_type?: 'fixed' | 'hourly';
+  task_listing_kind?: 'task' | 'service' | 'project' | 'job' | null;
   reviewer: User;
   reviewee: User;
   reviewer_type?: 'customer' | 'tasker';

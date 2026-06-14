@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Briefcase, PlusCircle, Search } from 'lucide-react';
+import { TASK_BROWSE_PATH, TASK_MAP_PATH } from '@/lib/taskBrowsePath';
 import { useAuth } from '@/hooks/useAuth';
 import { taskService } from '@/services';
 import { cn } from '@/lib/utils';
@@ -47,9 +48,10 @@ const NAV_ITEMS: NavItem[] = [
     id: 'browse',
     label: 'Browse',
     icon: Search,
-    href: '/task',
+    href: TASK_BROWSE_PATH,
     match: (pathname) =>
-      pathname === '/task' ||
+      pathname === TASK_BROWSE_PATH ||
+      pathname === TASK_MAP_PATH ||
       (pathname.startsWith('/task/') && !pathname.startsWith('/tasker-dashboard')),
   },
   {

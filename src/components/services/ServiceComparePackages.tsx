@@ -7,6 +7,8 @@ import { getServicePackages, type Service, type ServicePackage } from './service
 
 interface ServiceComparePackagesProps {
   service: Service;
+  selectedPackageId: ServicePackage['id'];
+  onSelectPackage: (packageId: ServicePackage['id']) => void;
 }
 
 const COMPARE_ROWS: {
@@ -61,7 +63,11 @@ function PackageHeader({ pkg }: { pkg: ServicePackage }) {
   );
 }
 
-export default function ServiceComparePackages({ service }: ServiceComparePackagesProps) {
+export default function ServiceComparePackages({
+  service,
+  selectedPackageId,
+  onSelectPackage,
+}: ServiceComparePackagesProps) {
   const packages = getServicePackages(service);
 
   return (
@@ -112,9 +118,14 @@ export default function ServiceComparePackages({ service }: ServiceComparePackag
               >
                 <button
                   type="button"
-                  className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-[#52C47F] px-5 py-2.5 text-sm font-normal text-white transition-colors hover:bg-[#49b071]"
+                  onClick={() => onSelectPackage(pkg.id)}
+                  className={`inline-flex cursor-pointer items-center gap-2 rounded-md px-5 py-2.5 text-sm font-normal text-white transition-colors ${
+                    selectedPackageId === pkg.id
+                      ? 'bg-[#1D3E35] hover:bg-[#163329]'
+                      : 'bg-[#52C47F] hover:bg-[#49b071]'
+                  }`}
                 >
-                  Select
+                  {selectedPackageId === pkg.id ? 'Selected' : 'Select'}
                   <ArrowUpRight className="h-4 w-4 stroke-[2.5]" />
                 </button>
               </div>

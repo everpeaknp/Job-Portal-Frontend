@@ -363,6 +363,8 @@ interface DashboardCreateJobProps {
   initialData?: Partial<CreateJobFormData>;
   mode?: 'create' | 'edit';
   postingContext?: EmployerPostingContext | null;
+  categoryOptions?: string[];
+  skillOptions?: string[];
 }
 
 function parseDescriptionParagraphs(text: string): string[] {
@@ -427,6 +429,8 @@ export default function DashboardCreateJob({
   initialData,
   mode = 'create',
   postingContext,
+  categoryOptions = [],
+  skillOptions = [],
 }: DashboardCreateJobProps) {
   const isEdit = mode === 'edit';
   const isIndividualPoster = postingContext?.accountType === 'individual';
@@ -434,6 +438,13 @@ export default function DashboardCreateJob({
     ...EMPTY_CREATE_FORM,
     ...normalizeJobFormData(initialData ?? {}),
   }));
+  const baseCategoryOptions =
+    categoryOptions.length > 0 ? categoryOptions : CATEGORIES;
+  const categories =
+    form.category && !baseCategoryOptions.includes(form.category)
+      ? [form.category, ...baseCategoryOptions]
+      : baseCategoryOptions;
+  const skillChoices = skillOptions.length > 0 ? skillOptions : SKILLS;
   const [openSection, setOpenSection] = useState<string | null>(null);
 
   useEffect(() => {
@@ -519,7 +530,7 @@ export default function DashboardCreateJob({
               label="Category"
               value={form.category}
               onChange={(category) => update({ category })}
-              options={CATEGORIES}
+              options={categories}
             />
             {!postingContext ? (
               <div>
@@ -651,7 +662,7 @@ export default function DashboardCreateJob({
                 value={form.skills}
                 onChange={(skills) => update({ skills })}
                 placeholder="Nothing selected"
-                options={SKILLS}
+                options={skillChoices}
               />
             </div>
           </div>

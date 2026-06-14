@@ -9,7 +9,8 @@ import { formatNPR } from '@/lib/nepalLocale';
 import { DEFAULT_SERVICE_IMAGE, serviceListingFallbackImage } from '@/lib/dashboardListingApi';
 import { fetchPublicServices } from '@/lib/serviceApi';
 import { ALL_SERVICES } from './serviceListData';
-import { getServiceAuthorProfilePath, getServiceDetailPath } from './serviceSlug';
+import { getServiceDetailPath } from './serviceSlug';
+import ServiceAuthorLink from './ServiceAuthorLink';
 import { toggleServiceSaved, useSavedServiceIds } from './serviceBookmarks';
 
 const PAGINATION_DOTS = [0, 1, 2];
@@ -177,8 +178,8 @@ export default function BestServices({ className = '' }: BestServicesProps) {
                     </div>
 
                     <div className="mt-5 flex items-center justify-between border-t border-neutral-300 pt-4">
-                      <Link
-                        href={getServiceAuthorProfilePath(card)}
+                      <ServiceAuthorLink
+                        service={card}
                         className="flex min-w-0 items-center gap-1.5 transition-opacity hover:opacity-80"
                         onClick={(e) => e.stopPropagation()}
                       >
@@ -194,7 +195,7 @@ export default function BestServices({ className = '' }: BestServicesProps) {
                           )}
                         </div>
                         <span className="truncate text-xs font-normal text-neutral-500">{card.author.name}</span>
-                      </Link>
+                      </ServiceAuthorLink>
 
                       <div className="flex-shrink-0 text-right">
                         <span className="mb-0.5 block text-[10px] font-normal leading-none text-neutral-400">

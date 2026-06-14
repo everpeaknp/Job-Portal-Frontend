@@ -49,7 +49,16 @@ export const LocationStep: React.FC<LocationStepProps> = ({ data, updateData, sh
             latitude: data.latitude,
             longitude: data.longitude,
           }}
-          onChange={updateData}
+          onChange={(updates) => {
+            updateData({
+              location: updates.location,
+              latitude: updates.latitude,
+              longitude: updates.longitude,
+              ...(updates.locationType === 'remote' || updates.locationType === 'in-person'
+                ? { locationType: updates.locationType }
+                : {}),
+            });
+          }}
           showErrors={showErrors}
           locationError={errors?.location}
         />

@@ -50,6 +50,8 @@ export interface Project {
   employerLogoText?: string;
   /** Loaded from /api/v1/projects/{slug}/ when available */
   questions?: ProjectQuestionItem[];
+  /** Task listing status (open, assigned, in_progress, completed, cancelled, …) */
+  status?: string;
 }
 
 export function getProjectSchedule(project: Project): ProjectScheduleInfo | null {

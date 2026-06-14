@@ -15,6 +15,10 @@ export default function FreelancerEducation({ freelancer, items }: FreelancerEdu
     [freelancer, items],
   );
 
+  if (items !== undefined && educationItems.length === 0) {
+    return null;
+  }
+
   return (
     <div className="mt-10 w-full max-w-4xl">
       <div className="mb-10 w-full border-t border-neutral-200" />

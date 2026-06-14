@@ -32,7 +32,18 @@ export function getServiceDetailPath(service: Service): string {
   return `/services/${getServiceSlug(service)}`;
 }
 
-export function getServiceAuthorProfilePath(service: Service): string {
+/** Real tasker profile path when username is known; mock fallback only for demo cards. */
+export function getServiceAuthorProfilePath(service: Service): string | null {
+  const username = service.author.username?.trim().toLowerCase();
+  if (username) {
+    return `/freelancers/${encodeURIComponent(username)}`;
+  }
+
+  // Legacy mock cards without API slugs
+  if (service.slug?.trim()) {
+    return null;
+  }
+
   const byName = FREELANCERS_DATA.find(
     (freelancer) => freelancer.name.toLowerCase() === service.author.name.toLowerCase(),
   );

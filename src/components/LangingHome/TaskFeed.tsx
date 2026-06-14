@@ -159,7 +159,7 @@ function MarqueeRow({
 
 function TaskCard({ task }: { task: LandingTaskCard }) {
   const href = isMockLandingTask(task)
-    ? "/task"
+    ? browseTasksHref()
     : `/task/${encodeURIComponent(task.slug)}`;
 
   return (

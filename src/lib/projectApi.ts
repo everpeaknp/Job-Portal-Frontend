@@ -9,7 +9,7 @@ import type {
 import { parseServiceSkills, parseTaskDashboardMeta } from '@/lib/dashboardListingApi';
 import { formatNPR, formatTaskLocationShort } from '@/lib/nepalLocale';
 import { getTimeSlotById } from '@/lib/timeSlot';
-import { extractTaskList, formatTaskDisplayTitle } from '@/lib/taskUtils';
+import { extractTaskList, formatTaskDisplayTitle, resolveTaskCategoryName } from '@/lib/taskUtils';
 import { projectService } from '@/services/project.service';
 import { getMediaUrl, isTaskImageAttachment } from '@/lib/utils';
 import { resolveOwnerAvatarBg } from '@/lib/employerAvatarUtils';
@@ -65,14 +65,7 @@ function resolveOwnerName(task: Task): string {
 }
 
 function resolveCategoryName(task: Task): string {
-  if (task.category_name) return task.category_name;
-  if (task.category && typeof task.category === 'object' && 'name' in task.category) {
-    return String((task.category as { name: string }).name);
-  }
-  const meta = parseTaskDashboardMeta(task);
-  if (meta?.category?.trim()) return meta.category.trim();
-  if (meta?.projectForm?.category?.trim()) return meta.projectForm.category.trim();
-  return 'General';
+  return resolveTaskCategoryName(task);
 }
 
 function mapProjectLocation(
@@ -104,7 +97,7 @@ function parseSkills(form?: Partial<CreateProjectFormData>, description?: string
       .map((skill) => skill.trim())
       .filter(Boolean);
   }
-  return ['General'];
+  return [];
 }
 
 function mapExpenseLevel(budgetMax: number): Project['expenseLevel'] {
@@ -308,6 +301,7 @@ export function mapTaskToPublicProject(task: Task): Project {
     ownerReviews: task.bids_count ?? 0,
     schedule: resolveProjectSchedule(task, form),
     questions,
+    status: task.status || 'open',
   };
 }
 

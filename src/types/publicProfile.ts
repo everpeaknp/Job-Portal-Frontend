@@ -37,6 +37,7 @@ export interface PublicUserProfile {
   skills?: UserSkill[];
   badges?: UserBadge[];
   date_joined?: string;
+  profile_configured?: boolean;
 }
 
 export interface PublicProfileReview {

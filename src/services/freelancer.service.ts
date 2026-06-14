@@ -15,6 +15,7 @@ export type FreelancerMyProfileDto = User & {
 
 export type FreelancerPublicDto = PublicUserProfile & {
   slug?: string;
+  profile_configured?: boolean;
 };
 
 export type FreelancerProfileUpdatePayload = Partial<{
